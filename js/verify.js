@@ -1,4 +1,4 @@
-import { setStoredToken } from "./auth.js";
+import { verifyEmail } from "./auth.js";
 
 async function main() {
   const title = document.getElementById("verifyTitle");
@@ -13,20 +13,11 @@ async function main() {
   }
 
   try {
-    const res = await fetch("/api/auth/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ token }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Verification failed");
-
-    if (data.token) setStoredToken(data.token);
+    const user = await verifyEmail(token);
     if (title) title.textContent = "Email verified";
     if (message) {
-      message.textContent = data.user?.name
-        ? `Welcome, ${data.user.name}. Your Ava account is ready.`
+      message.textContent = user?.name
+        ? `Welcome, ${user.name}. Your Ava account is ready.`
         : "Your Ava account is ready.";
     }
     if (actions) actions.hidden = false;

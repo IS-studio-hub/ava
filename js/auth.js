@@ -7,13 +7,15 @@ const TOKEN_KEY = "ava.auth.token";
 /** Live API origin when the UI is hosted on GitHub Pages (static). */
 const LIVE_API_ORIGIN = "https://web-production-da2e1.up.railway.app";
 
-function apiBase() {
+export function apiBase() {
   if (typeof window !== "undefined" && window.AVA_API_ORIGIN) {
     return String(window.AVA_API_ORIGIN).replace(/\/$/, "");
   }
-  const host = typeof window !== "undefined" ? window.location.hostname || "" : "";
-  if (host.endsWith("github.io")) return LIVE_API_ORIGIN;
-  return "";
+  if (typeof window === "undefined") return LIVE_API_ORIGIN;
+  const host = window.location.hostname || "";
+  if (!host || host === "localhost" || host === "127.0.0.1") return "";
+  if (host.endsWith(".railway.app")) return "";
+  return LIVE_API_ORIGIN;
 }
 
 export function getStoredToken() {
@@ -57,7 +59,7 @@ async function request(path, { method = "GET", body } = {}) {
     let message = data?.error || `Request failed (${res.status})`;
     if (res.status === 405) {
       message =
-        "Sign up needs the Ava server (not GitHub Pages). Use http://127.0.0.1:8765 or the Railway live URL.";
+        "This page cannot talk to the Ava API. Open https://web-production-da2e1.up.railway.app or http://127.0.0.1:8765";
     }
     const err = new Error(message);
     err.status = res.status;
