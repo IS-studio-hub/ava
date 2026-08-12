@@ -4,7 +4,15 @@
 
 const TOKEN_KEY = "ava.auth.token";
 
+/** Live API origin when the UI is hosted on GitHub Pages (static). */
+const LIVE_API_ORIGIN = "https://web-production-da2e1.up.railway.app";
+
 function apiBase() {
+  if (typeof window !== "undefined" && window.AVA_API_ORIGIN) {
+    return String(window.AVA_API_ORIGIN).replace(/\/$/, "");
+  }
+  const host = typeof window !== "undefined" ? window.location.hostname || "" : "";
+  if (host.endsWith("github.io")) return LIVE_API_ORIGIN;
   return "";
 }
 
@@ -46,7 +54,12 @@ async function request(path, { method = "GET", body } = {}) {
   }
 
   if (!res.ok) {
-    const err = new Error(data?.error || `Request failed (${res.status})`);
+    let message = data?.error || `Request failed (${res.status})`;
+    if (res.status === 405) {
+      message =
+        "Sign up needs the Ava server (not GitHub Pages). Use http://127.0.0.1:8765 or the Railway live URL.";
+    }
+    const err = new Error(message);
     err.status = res.status;
     err.data = data;
     throw err;

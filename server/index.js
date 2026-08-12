@@ -38,7 +38,7 @@ async function main() {
   await db.collection("pending_users").createIndex({ email: 1 });
   await db.collection("pending_users").createIndex({ token: 1 }, { unique: true });
   await db.collection("pending_users").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-  app.listen(port, () => {
+  app.listen(port, "0.0.0.0", () => {
     console.log(`Ava running at http://127.0.0.1:${port}`);
     console.log(`MongoDB database: ava (users, saves, pending_users)`);
   });
