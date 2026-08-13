@@ -314,7 +314,7 @@ export function createImageField(image, {
 
   const iw = image.naturalWidth || image.width || 1;
   const ih = image.naturalHeight || image.height || 1;
-  const box = size * clamp01(scale);
+  const box = size * Math.max(0.05, Math.min(100, Number(scale) || 0.82));
   const r = Math.min(box / iw, box / ih);
   const dw = Math.max(1, iw * r);
   const dh = Math.max(1, ih * r);
