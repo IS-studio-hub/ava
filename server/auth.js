@@ -116,7 +116,7 @@ router.post("/signup", async (req, res) => {
 
     res.status(201).json({
       pending: true,
-      message: "Check your email — click the verification button to create your account.",
+      message: `Check ${email} — click the verification button to create your account.`,
     });
   } catch (err) {
     console.error("signup", err);
