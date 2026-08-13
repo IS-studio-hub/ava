@@ -340,6 +340,7 @@ function bindStudio(engine) {
     document.body.classList.toggle("is-recording-art", locked);
     const source = $("#shapeSource");
     if (source) source.inert = locked;
+    $("#sourceTabs")?.classList.toggle("is-locked", locked);
     if (letterInput) {
       letterInput.readOnly = locked;
       letterInput.classList.toggle("is-locked", locked);
@@ -372,6 +373,45 @@ function bindStudio(engine) {
       reset.classList.toggle("is-locked", locked);
     }
     lockSaveButton();
+  }
+
+  function currentSourceMode() {
+    if (engine.params.imageSrc) return "image";
+    if (normalizeWord(wordInput?.value || engine.params.word || "", currentScript())) return "word";
+    return "letter";
+  }
+
+  function setSourceTab(mode, { activate = false } = {}) {
+    const next = mode === "word" || mode === "image" ? mode : "letter";
+    const tabs = ["letter", "word", "image"];
+    tabs.forEach((id) => {
+      const tab = $(`#tabSource${id[0].toUpperCase()}${id.slice(1)}`);
+      const panel = $(`#panelSource${id[0].toUpperCase()}${id.slice(1)}`);
+      const on = id === next;
+      if (tab) {
+        tab.classList.toggle("is-active", on);
+        tab.setAttribute("aria-selected", on ? "true" : "false");
+        tab.tabIndex = on ? 0 : -1;
+      }
+      if (panel) panel.hidden = !on;
+    });
+
+    if (!activate || recording) return;
+
+    if (next === "letter") {
+      if (wordInput) wordInput.value = "";
+      engine.setParams({ word: "", imageSrc: "" });
+      syncImagePreview("");
+      syncLetter();
+      syncWord();
+    } else if (next === "word") {
+      engine.setParams({ imageSrc: "" });
+      syncImagePreview("");
+      syncWord();
+      markPreset();
+    } else if (next === "image") {
+      markPreset();
+    }
   }
 
   function updateRecordUi(ms = 0) {
@@ -444,8 +484,11 @@ function bindStudio(engine) {
         if (ch === letterInput.value && !wordInput.value && !engine.params.imageSrc) return;
         letterInput.value = ch;
         wordInput.value = "";
+        engine.setParams({ imageSrc: "" });
+        syncImagePreview("");
         syncLetter();
         syncWord();
+        setSourceTab("letter");
       });
       presets.appendChild(btn);
     });
@@ -502,6 +545,9 @@ function bindStudio(engine) {
     letterInput.value = letter;
     engine.setParams({ letter, script });
     markPreset();
+    if (!engine.params.imageSrc && !normalizeWord(wordInput?.value || "", script)) {
+      setSourceTab("letter");
+    }
   }
 
   function syncWord() {
@@ -512,7 +558,15 @@ function bindStudio(engine) {
     markPreset();
     const label = $("#resultLetter");
     if (label) label.textContent = raw || engine.params.letter;
+    if (raw && !engine.params.imageSrc) setSourceTab("word");
   }
+
+  bindTabs($("#sourceTabs"), {
+    onChange(tab) {
+      if (recording) return;
+      setSourceTab(tab.getAttribute("data-source") || "letter", { activate: true });
+    },
+  });
 
   bindTabs($("#scriptToggle"), {
     onChange(tab) {
@@ -525,7 +579,13 @@ function bindStudio(engine) {
       letterInput.value = engine.params.letter;
       return;
     }
+    if (wordInput?.value) wordInput.value = "";
+    if (engine.params.imageSrc) {
+      engine.setParams({ imageSrc: "" });
+      syncImagePreview("");
+    }
     syncLetter();
+    syncWord();
   });
   letterInput.addEventListener("focus", () => {
     if (recording) {
@@ -539,6 +599,10 @@ function bindStudio(engine) {
     if (recording) {
       wordInput.value = engine.params.word || "";
       return;
+    }
+    if (engine.params.imageSrc) {
+      engine.setParams({ imageSrc: "" });
+      syncImagePreview("");
     }
     syncWord();
   });
@@ -575,6 +639,7 @@ function bindStudio(engine) {
       engine.setParams({ imageSrc: src });
       syncImagePreview(src);
       markPreset();
+      setSourceTab("image");
     } catch (err) {
       console.error(err);
       const status = $("#saveStatus");
@@ -588,6 +653,7 @@ function bindStudio(engine) {
     engine.setParams({ imageSrc: "" });
     syncImagePreview("");
     markPreset();
+    setSourceTab(normalizeWord(wordInput?.value || "", currentScript()) ? "word" : "letter");
   });
 
   // Hydrate from engine/URL first
@@ -596,6 +662,7 @@ function bindStudio(engine) {
   applyScriptUI(currentScript());
   renderPresets();
   syncImagePreview(engine.params.imageSrc || "");
+  setSourceTab(currentSourceMode());
 
   SLIDERS.forEach((id) => {
     const el = document.getElementById(id);
@@ -690,6 +757,7 @@ function bindStudio(engine) {
     syncImagePreview("");
     syncLetter();
     syncWord();
+    setSourceTab("letter");
   });
 
   $("#btnPause").addEventListener("click", () => {
@@ -897,6 +965,7 @@ function bindStudio(engine) {
   bindPointer(engine);
   updateArtboardLabel();
   Promise.resolve(loadSaveFromQuery(engine)).finally(() => {
+    setSourceTab(currentSourceMode());
     fetchMe().then((user) => {
       if (user) renderUsage(user, { prompt: Number(user.usesRemaining) === 0 });
     });

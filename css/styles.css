@@ -68,6 +68,7 @@ body {
 
 .btn:focus-visible,
 .script-toggle__btn:focus-visible,
+.source-tabs__btn:focus-visible,
 .auth-tab:focus-visible,
 .presets button:focus-visible,
 .panel-toggle:focus-visible,
@@ -404,6 +405,54 @@ body {
 .text-input--letter.text-input--hebrew {
   font-family: "Heebo", "Noto Sans Hebrew", sans-serif;
   text-transform: none;
+}
+
+.source-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  margin: 0.1rem 0 0.55rem;
+}
+
+.source-tabs__btn {
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.55rem 0.55rem;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.source-tabs__btn.is-active {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.source-tabs.is-locked {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.source-panels {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.source-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.source-panel[hidden] {
+  display: none !important;
 }
 
 .script-toggle {

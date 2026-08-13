@@ -35,52 +35,63 @@
       <div class="panel__scroll">
       <div class="panel__head">
         <h1>Controls</h1>
-        <p>Choose a letter to form it on the grid. Control the small glyphs that build that uppercase shape.</p>
+        <p>Pick Letter, Word, or Image, then shape the field with the controls below.</p>
       </div>
 
-      <section class="block">
-        <h2 class="block__title" id="letterHeading">Letter</h2>
-        <div id="shapeSource">
-        <label class="label" for="letterInput">Main letter</label>
-        <input id="letterInput" class="text-input text-input--letter" type="text" maxlength="1" value="G" autocomplete="off" spellcheck="false" aria-describedby="wordHelp" />
-        <div class="script-toggle" id="scriptToggle" role="tablist" aria-label="Letter language">
-          <button type="button" class="script-toggle__btn is-active" role="tab" id="scriptLatin" aria-selected="true" tabindex="0">English</button>
-          <button type="button" class="script-toggle__btn" role="tab" id="scriptHebrew" aria-selected="false" tabindex="-1">עברית</button>
+      <section class="block" id="shapeSource">
+        <h2 class="block__title" id="sourceHeading">Source</h2>
+        <div class="source-tabs" id="sourceTabs" role="tablist" aria-label="Shape source">
+          <button type="button" class="source-tabs__btn is-active" role="tab" id="tabSourceLetter" data-source="letter" aria-controls="panelSourceLetter" aria-selected="true" tabindex="0">Letter</button>
+          <button type="button" class="source-tabs__btn" role="tab" id="tabSourceWord" data-source="word" aria-controls="panelSourceWord" aria-selected="false" tabindex="-1">Word</button>
+          <button type="button" class="source-tabs__btn" role="tab" id="tabSourceImage" data-source="image" aria-controls="panelSourceImage" aria-selected="false" tabindex="-1">Image</button>
         </div>
-        <div class="presets" id="letterPresets" role="listbox" aria-label="Quick letters"></div>
 
-        <label class="label" for="wordInput">Word</label>
-        <input id="wordInput" class="text-input" type="text" maxlength="10" value="" placeholder="e.g. AVA" autocomplete="off" spellcheck="false" aria-describedby="wordHelp" />
-        <p class="help" id="wordHelp">Type a word to form it from small letters (each big letter uses its own lowercase). Leave empty for a single letter.</p>
-
-        <label class="label" for="imageInput">Image</label>
-        <div class="image-upload">
-          <input id="imageInput" class="file-input" type="file" accept="image/*" tabindex="-1" aria-hidden="true" />
-          <div class="image-upload__row">
-            <button type="button" class="btn btn--ghost btn--small" id="btnPickImage" aria-describedby="imageHelp">Upload image</button>
-            <button type="button" class="btn btn--ghost btn--small" id="btnClearImage" hidden>Clear uploaded image</button>
+        <div class="source-panels">
+          <div class="source-panel" id="panelSourceLetter" role="tabpanel" aria-labelledby="tabSourceLetter">
+            <label class="label" for="letterInput">Main letter</label>
+            <input id="letterInput" class="text-input text-input--letter" type="text" maxlength="1" value="G" autocomplete="off" spellcheck="false" />
+            <div class="script-toggle" id="scriptToggle" role="tablist" aria-label="Letter language">
+              <button type="button" class="script-toggle__btn is-active" role="tab" id="scriptLatin" aria-selected="true" tabindex="0">English</button>
+              <button type="button" class="script-toggle__btn" role="tab" id="scriptHebrew" aria-selected="false" tabindex="-1">עברית</button>
+            </div>
+            <div class="presets" id="letterPresets" role="listbox" aria-label="Quick letters"></div>
+            <p class="help">Pick one letter. The field forms that shape from small glyphs.</p>
           </div>
-          <img id="imagePreview" class="image-upload__preview" alt="Uploaded image preview" hidden />
-        </div>
-        <p class="help" id="imageHelp">Form the photo with random small letters. Shape size, weight, softness, and letter scale work the same as text. Image overrides letter/word until cleared.</p>
-        </div>
 
-        <div class="slider-row">
-          <label class="label" for="wordMerge">Letter merge</label>
-          <span class="value" data-for="wordMerge">45</span>
-        </div>
-        <input id="wordMerge" type="range" min="-20" max="100" step="1" value="45" />
-        <p class="help">Positive pulls letters together; negative (−10, −20) widens the gap between them.</p>
+          <div class="source-panel" id="panelSourceWord" role="tabpanel" aria-labelledby="tabSourceWord" hidden>
+            <label class="label" for="wordInput">Word</label>
+            <input id="wordInput" class="text-input" type="text" maxlength="10" value="" placeholder="e.g. AVA" autocomplete="off" spellcheck="false" aria-describedby="wordHelp" />
+            <p class="help" id="wordHelp">Type a word to form it from small letters (each big letter uses its own lowercase).</p>
+            <div class="slider-row">
+              <label class="label" for="wordMerge">Letter merge</label>
+              <span class="value" data-for="wordMerge">45</span>
+            </div>
+            <input id="wordMerge" type="range" min="-20" max="100" step="1" value="45" />
+            <p class="help">Positive pulls letters together; negative (−10, −20) widens the gap between them.</p>
+          </div>
 
-        <label class="toggle">
-          <input id="imageInvert" type="checkbox" />
-          <span>Invert image (light areas become the shape)</span>
-        </label>
-        <div class="slider-row">
-          <label class="label" for="imageThreshold">Image threshold</label>
-          <span class="value" data-for="imageThreshold">0.48</span>
+          <div class="source-panel" id="panelSourceImage" role="tabpanel" aria-labelledby="tabSourceImage" hidden>
+            <label class="label" for="imageInput">Image</label>
+            <div class="image-upload">
+              <input id="imageInput" class="file-input" type="file" accept="image/*" tabindex="-1" aria-hidden="true" />
+              <div class="image-upload__row">
+                <button type="button" class="btn btn--ghost btn--small" id="btnPickImage" aria-describedby="imageHelp">Upload image</button>
+                <button type="button" class="btn btn--ghost btn--small" id="btnClearImage" hidden>Clear uploaded image</button>
+              </div>
+              <img id="imagePreview" class="image-upload__preview" alt="Uploaded image preview" hidden />
+            </div>
+            <p class="help" id="imageHelp">Form the photo with random small letters. Shape size, weight, softness, and letter scale work the same as text.</p>
+            <label class="toggle">
+              <input id="imageInvert" type="checkbox" />
+              <span>Invert image (light areas become the shape)</span>
+            </label>
+            <div class="slider-row">
+              <label class="label" for="imageThreshold">Image threshold</label>
+              <span class="value" data-for="imageThreshold">0.48</span>
+            </div>
+            <input id="imageThreshold" type="range" min="0.08" max="0.92" step="0.01" value="0.48" />
+          </div>
         </div>
-        <input id="imageThreshold" type="range" min="0.08" max="0.92" step="0.01" value="0.48" />
       </section>
 
       <section class="block">
