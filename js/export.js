@@ -8,8 +8,11 @@ export const VIDEO_PRESETS = {
   "4k": { label: "4K", size: 2160, fps: 30, bits: 28_000_000, format: "mp4" },
   "1080p": { label: "1080p", size: 1080, fps: 30, bits: 12_000_000, format: "mp4" },
   "720p": { label: "720p", size: 720, fps: 30, bits: 6_000_000, format: "mp4" },
+  "480p": { label: "480p", size: 480, fps: 30, bits: 2_500_000, format: "mp4" },
   web: { label: "Web", size: 480, fps: 24, bits: 2_000_000, format: "webm" },
 };
+
+export const MAX_RECORD_MS = 60_000;
 
 export function resultUrl(paramsQuery, absolute = true) {
   const path = `result.html?${paramsQuery}`;
@@ -160,6 +163,76 @@ export function captureCanvasVideo(canvas, {
   });
 }
 
+/**
+ * Live artboard recording until stop() is called.
+ */
+export function startCanvasRecording(canvas, {
+  fps = 30,
+  bitsPerSecond = 8_000_000,
+  preferMime = "webm",
+} = {}) {
+  if (!canvas || typeof canvas.captureStream !== "function") {
+    throw new Error("Canvas capture is not supported in this browser.");
+  }
+  if (typeof MediaRecorder === "undefined") {
+    throw new Error("Video recording is not supported in this browser.");
+  }
+
+  let mime = pickMime(preferMime);
+  if (!mime && preferMime !== "any") mime = pickMime("any");
+  if (!mime) throw new Error("No supported video format found for recording.");
+
+  const stream = canvas.captureStream(fps);
+  const chunks = [];
+  let recorder;
+  try {
+    recorder = new MediaRecorder(stream, {
+      mimeType: mime,
+      videoBitsPerSecond: bitsPerSecond,
+    });
+  } catch (err) {
+    stream.getTracks().forEach((t) => t.stop());
+    throw err;
+  }
+
+  recorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) chunks.push(e.data);
+  };
+
+  const startedAt = performance.now();
+  try {
+    recorder.start(250);
+  } catch (err) {
+    stream.getTracks().forEach((t) => t.stop());
+    throw err;
+  }
+
+  return {
+    mime,
+    startedAt,
+    stop() {
+      return new Promise((resolve, reject) => {
+        if (!recorder || recorder.state === "inactive") {
+          stream.getTracks().forEach((t) => t.stop());
+          const blob = new Blob(chunks, { type: mime });
+          resolve({ blob, mime, durationMs: Math.max(0, performance.now() - startedAt) });
+          return;
+        }
+        recorder.onerror = (e) => {
+          stream.getTracks().forEach((t) => t.stop());
+          reject(e.error || new Error("Recording failed."));
+        };
+        recorder.onstop = () => {
+          stream.getTracks().forEach((t) => t.stop());
+          const blob = new Blob(chunks, { type: mime });
+          resolve({ blob, mime, durationMs: Math.max(0, performance.now() - startedAt) });
+        };
+        recorder.stop();
+      });
+    },
+  };
+}
+
 let ffmpegInstance = null;
 let ffmpegLoading = null;
 
@@ -223,6 +296,51 @@ async function convertToMp4(blob, onStatus) {
   }
 
   return new Blob([out.buffer], { type: "video/mp4" });
+}
+
+/**
+ * Scale a recorded blob to a square MP4 preset and download it.
+ */
+export async function transcodeAndDownloadRecording(blob, {
+  presetKey = "1080p",
+  filenameBase = "ava-recording",
+  onStatus,
+} = {}) {
+  if (!blob) throw new Error("No recording to download.");
+  const preset = VIDEO_PRESETS[presetKey] || VIDEO_PRESETS["1080p"];
+  const size = preset.size;
+  const ffmpeg = await getFFmpeg(onStatus);
+  if (onStatus) onStatus(`Converting to ${preset.label} MP4…`);
+
+  const inputName = blob.type.includes("mp4") ? "input.mp4" : blob.type.includes("webm") ? "input.webm" : "input.mkv";
+  const data = await ffmpeg._fetchFile(blob);
+  await ffmpeg.writeFile(inputName, data);
+
+  await ffmpeg.exec([
+    "-i", inputName,
+    "-vf", `scale=${size}:${size}:force_original_aspect_ratio=decrease,pad=${size}:${size}:(ow-iw)/2:(oh-ih)/2:black`,
+    "-c:v", "libx264",
+    "-pix_fmt", "yuv420p",
+    "-preset", "ultrafast",
+    "-crf", "20",
+    "-an",
+    "-movflags", "+faststart",
+    "output.mp4",
+  ]);
+
+  const out = await ffmpeg.readFile("output.mp4");
+  try {
+    await ffmpeg.deleteFile(inputName);
+    await ffmpeg.deleteFile("output.mp4");
+  } catch {
+    /* ignore cleanup errors */
+  }
+
+  const outBlob = new Blob([out.buffer], { type: "video/mp4" });
+  const filename = `${filenameBase}-${preset.label.toLowerCase()}-${size}.mp4`;
+  downloadBlob(outBlob, filename);
+  if (onStatus) onStatus(`Downloaded ${filename}`);
+  return { filename, mime: outBlob.type, size, preset: presetKey };
 }
 
 /**

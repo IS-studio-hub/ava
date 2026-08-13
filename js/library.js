@@ -1,10 +1,11 @@
 import { fetchMe, signin, signout, signup } from "./auth.js";
-import { deleteSave, listSaves } from "./saves.js";
+import { deleteSave, fetchRecordingBlob, listSaves } from "./saves.js";
 import { LetterFieldEngine } from "./engine.js";
 import {
   buildEmbedCode,
   copyText,
   recordEngineVideo,
+  transcodeAndDownloadRecording,
   VIDEO_PRESETS,
 } from "./export.js";
 
@@ -79,7 +80,7 @@ function renderGrid() {
   if (!saves.length) {
     if (empty) {
       empty.hidden = false;
-      empty.textContent = "No saves yet. Open Studio and press Save.";
+      empty.textContent = "No saves yet. Open Studio and press Save or Record.";
     }
     return;
   }
@@ -97,7 +98,7 @@ function renderGrid() {
         <span class="library-card__glyph">${label}</span>
       </div>
       <div class="library-card__body">
-        <h2 class="library-card__title">${save.title}</h2>
+        <h2 class="library-card__title">${save.title}${save.kind === "recording" || save.hasVideo ? '<span class="library-card__badge">Recording</span>' : ""}</h2>
         <p class="help">${formatDate(save.updatedAt || save.createdAt)}</p>
         <div class="library-card__actions">
           <a class="btn btn--ghost btn--small" href="studio.html?load=${encodeURIComponent(save.id)}">Open</a>
@@ -216,6 +217,14 @@ function bindGridActions() {
     if (act === "video") {
       videoSave = save;
       $("#exportStatus").textContent = "";
+      const recorded = save.kind === "recording" || save.hasVideo;
+      const durationFields = $("#exportDurationFields");
+      if (durationFields) durationFields.hidden = recorded;
+      const webOpt = $("#exportResolution")?.querySelector('option[value="web"]');
+      if (webOpt) webOpt.hidden = recorded;
+      if (recorded && $("#exportResolution")?.value === "web") {
+        $("#exportResolution").value = "1080p";
+      }
       $("#videoDialog")?.showModal?.();
       return;
     }
@@ -318,41 +327,62 @@ function bindVideoDialog() {
   $("#btnCloseVideo")?.addEventListener("click", () => $("#videoDialog")?.close?.());
 
   $("#btnStartVideo")?.addEventListener("click", async () => {
-    if (recording || !videoSave?.params) return;
+    if (recording || !videoSave) return;
     const presetKey = $("#exportResolution")?.value || "1080p";
     const preset = VIDEO_PRESETS[presetKey] || VIDEO_PRESETS["1080p"];
     const durationSec = Math.max(3, Math.min(15, parseFloat(durationEl?.value || "6") || 6));
     const canvas = $("#exportCanvas");
     const btn = $("#btnStartVideo");
+    const recorded = videoSave.kind === "recording" || videoSave.hasVideo;
+    const label = String(videoSave.word || videoSave.letter || videoSave.title || "field")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-|-$/g, "") || "field";
 
     recording = true;
     if (btn) btn.disabled = true;
-    $("#exportStatus").textContent = `Recording ${preset.label}…`;
-
-    const engine = new LetterFieldEngine(canvas, videoSave.params);
-    await engine.ready();
-    engine.start();
 
     try {
-      const label = videoSave.word || videoSave.letter || videoSave.title || "field";
-      const { filename } = await recordEngineVideo(engine, {
-        presetKey,
-        durationSec,
-        filenameBase: `ava-${String(label).toLowerCase()}`,
-        onProgress: (t) => {
-          $("#exportStatus").textContent =
-            t >= 1 ? "Finishing…" : `Recording ${preset.label}… ${Math.round(t * 100)}%`;
-        },
-        onStatus: (msg) => {
-          $("#exportStatus").textContent = msg;
-        },
-      });
-      $("#exportStatus").textContent = `Downloaded ${filename}`;
+      if (recorded) {
+        $("#exportStatus").textContent = "Loading recording…";
+        const blob = await fetchRecordingBlob(videoSave.id);
+        const { filename } = await transcodeAndDownloadRecording(blob, {
+          presetKey: presetKey === "web" ? "480p" : presetKey,
+          filenameBase: `ava-${label}`,
+          onStatus: (msg) => {
+            $("#exportStatus").textContent = msg;
+          },
+        });
+        $("#exportStatus").textContent = `Downloaded ${filename}`;
+        return;
+      }
+
+      if (!videoSave.params) return;
+      $("#exportStatus").textContent = `Recording ${preset.label}…`;
+      const engine = new LetterFieldEngine(canvas, videoSave.params);
+      await engine.ready();
+      engine.start();
+      try {
+        const { filename } = await recordEngineVideo(engine, {
+          presetKey,
+          durationSec,
+          filenameBase: `ava-${label}`,
+          onProgress: (t) => {
+            $("#exportStatus").textContent =
+              t >= 1 ? "Finishing…" : `Recording ${preset.label}… ${Math.round(t * 100)}%`;
+          },
+          onStatus: (msg) => {
+            $("#exportStatus").textContent = msg;
+          },
+        });
+        $("#exportStatus").textContent = `Downloaded ${filename}`;
+      } finally {
+        engine.stop();
+      }
     } catch (err) {
       console.error(err);
       $("#exportStatus").textContent = err?.message || "Video export failed.";
     } finally {
-      engine.stop();
       recording = false;
       if (btn) btn.disabled = false;
     }

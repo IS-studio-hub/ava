@@ -24,6 +24,7 @@
       </div>
       <div class="stage__frame">
         <canvas id="field" width="900" height="900" aria-label="Letter field animation"></canvas>
+        <span class="stage__rec" id="recIndicator" hidden>REC</span>
       </div>
         <p class="stage__hint">Move pointer for spin / ripple / bubble · Toggle animations in Controls</p>
     </main>
@@ -39,7 +40,7 @@
         <h2 class="block__title">Letter</h2>
         <label class="label" for="letterInput">Main letter</label>
         <input id="letterInput" class="text-input text-input--letter" type="text" maxlength="1" value="G" autocomplete="off" spellcheck="false" />
-        <div class="script-toggle" role="tablist" aria-label="Letter language">
+        <div class="script-toggle" id="scriptToggle" role="tablist" aria-label="Letter language">
           <button type="button" class="script-toggle__btn is-active" id="scriptLatin">English</button>
           <button type="button" class="script-toggle__btn" id="scriptHebrew">עברית</button>
         </div>
@@ -447,6 +448,7 @@
         <button type="button" class="btn btn--ghost" id="btnReset">Reset</button>
         <button type="button" class="btn btn--ghost" id="btnPause">Pause</button>
         <button type="button" class="btn btn--primary" id="btnSave">Save</button>
+        <button type="button" class="btn btn--ghost" id="btnRecord">Record</button>
         <p class="help panel__save-hint" id="usageStatus" aria-live="polite"></p>
         <p class="help panel__save-hint" id="saveStatus" aria-live="polite"></p>
       </div>

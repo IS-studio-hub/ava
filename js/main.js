@@ -1,8 +1,9 @@
 import { LetterFieldEngine } from "./engine.js";
 import { fetchMe, signin, signout, signup } from "./auth.js";
-import { createSave, getSave } from "./saves.js";
+import { createSave, createRecordingSave, getSave } from "./saves.js";
 import { usageLabel } from "./usage.js";
 import { bindPlanLimitDialog, showPlanLimitDialog } from "./planLimit.js";
+import { MAX_RECORD_MS, startCanvasRecording } from "./export.js";
 import {
   alphabetFor,
   detectScript,
@@ -283,17 +284,82 @@ function bindStudio(engine) {
   const btnPickImage = $("#btnPickImage");
   const btnClearImage = $("#btnClearImage");
   let usageUser = null;
+  let recording = false;
+  let recorderHandle = null;
+  let recordTimer = 0;
+  let stoppingRecord = false;
 
   function planExhausted() {
     return Boolean(usageUser && Number(usageUser.usesRemaining) === 0);
   }
 
   function lockSaveButton() {
-    const btn = $("#btnSave");
-    if (!btn) return;
     const locked = planExhausted();
-    btn.classList.toggle("is-locked", locked);
-    btn.setAttribute("aria-disabled", locked ? "true" : "false");
+    const saveBtn = $("#btnSave");
+    if (saveBtn) {
+      const block = locked || recording;
+      saveBtn.classList.toggle("is-locked", block);
+      saveBtn.setAttribute("aria-disabled", block ? "true" : "false");
+    }
+    const recBtn = $("#btnRecord");
+    if (recBtn && !recording) {
+      recBtn.classList.toggle("is-locked", locked);
+      recBtn.setAttribute("aria-disabled", locked ? "true" : "false");
+    }
+  }
+
+  function formatRecordClock(ms) {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }
+
+  function lockShapeSource(locked) {
+    document.body.classList.toggle("is-recording-art", locked);
+    if (letterInput) {
+      letterInput.readOnly = locked;
+      letterInput.classList.toggle("is-locked", locked);
+      letterInput.setAttribute("aria-disabled", locked ? "true" : "false");
+    }
+    if (wordInput) {
+      wordInput.readOnly = locked;
+      wordInput.classList.toggle("is-locked", locked);
+      wordInput.setAttribute("aria-disabled", locked ? "true" : "false");
+    }
+    if (btnPickImage) {
+      btnPickImage.disabled = locked;
+      btnPickImage.classList.toggle("is-locked", locked);
+    }
+    if (btnClearImage) {
+      btnClearImage.disabled = locked;
+      btnClearImage.classList.toggle("is-locked", locked);
+    }
+    if (imageInput) imageInput.disabled = locked;
+    $("#scriptToggle")?.classList.toggle("is-locked", locked);
+    if ($("#scriptLatin")) $("#scriptLatin").disabled = locked;
+    if ($("#scriptHebrew")) $("#scriptHebrew").disabled = locked;
+    presets?.classList.toggle("is-locked", locked);
+    presets?.querySelectorAll("button").forEach((b) => {
+      b.disabled = locked;
+    });
+    const reset = $("#btnReset");
+    if (reset) {
+      reset.disabled = locked;
+      reset.classList.toggle("is-locked", locked);
+    }
+    lockSaveButton();
+  }
+
+  function updateRecordUi(ms = 0) {
+    const btn = $("#btnRecord");
+    const rec = $("#recIndicator");
+    if (btn) {
+      btn.textContent = recording ? `Stop · ${formatRecordClock(ms)}` : "Record";
+      btn.classList.toggle("is-recording", recording);
+    }
+    if (rec) {
+      rec.hidden = !recording;
+      rec.textContent = recording ? `REC ${formatRecordClock(ms)}` : "REC";
+    }
   }
 
   function renderUsage(user, { prompt = false } = {}) {
@@ -352,6 +418,7 @@ function bindStudio(engine) {
   }
 
   function setScript(next) {
+    if (recording) return;
     const script = normalizeScript(next);
     const patch = { script };
     if (script === "hebrew" && LATIN_ONLY_FONTS.has(engine.params.fontFamily)) {
@@ -412,22 +479,56 @@ function bindStudio(engine) {
   $("#scriptLatin")?.addEventListener("click", () => setScript("latin"));
   $("#scriptHebrew")?.addEventListener("click", () => setScript("hebrew"));
 
-  letterInput.addEventListener("input", () => syncLetter());
-  letterInput.addEventListener("focus", () => letterInput.select());
+  letterInput.addEventListener("input", () => {
+    if (recording) {
+      letterInput.value = engine.params.letter;
+      return;
+    }
+    syncLetter();
+  });
+  letterInput.addEventListener("focus", () => {
+    if (recording) {
+      letterInput.blur();
+      return;
+    }
+    letterInput.select();
+  });
 
-  wordInput.addEventListener("input", () => syncWord());
+  wordInput.addEventListener("input", () => {
+    if (recording) {
+      wordInput.value = engine.params.word || "";
+      return;
+    }
+    syncWord();
+  });
   wordInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
       wordInput.blur();
     }
   });
-  wordInput.addEventListener("focus", () => wordInput.select());
+  wordInput.addEventListener("focus", () => {
+    if (recording) {
+      wordInput.blur();
+      return;
+    }
+    wordInput.select();
+  });
 
-  btnPickImage?.addEventListener("click", () => imageInput?.click());
+  btnPickImage?.addEventListener("click", (e) => {
+    if (recording) {
+      e.preventDefault();
+      return;
+    }
+    imageInput?.click();
+  });
   imageInput?.addEventListener("change", async () => {
     const file = imageInput.files?.[0];
     if (!file) return;
+    if (recording) {
+      imageInput.value = "";
+      return;
+    }
     try {
       const src = await compressImageFile(file);
       engine.setParams({ imageSrc: src });
@@ -442,6 +543,7 @@ function bindStudio(engine) {
     }
   });
   btnClearImage?.addEventListener("click", () => {
+    if (recording) return;
     engine.setParams({ imageSrc: "" });
     syncImagePreview("");
     markPreset();
@@ -524,6 +626,7 @@ function bindStudio(engine) {
   });
 
   $("#btnReset").addEventListener("click", () => {
+    if (recording) return;
     setScript(defaults.script || "latin");
     Object.entries(defaults).forEach(([key, value]) => {
       if (key === "particle" || key === "script") return;
@@ -553,9 +656,113 @@ function bindStudio(engine) {
     $("#btnPause").textContent = paused ? "Play" : "Pause";
   });
 
+  async function stopRecordingAndSave() {
+    if (!recorderHandle || stoppingRecord) return;
+    stoppingRecord = true;
+    clearInterval(recordTimer);
+    recordTimer = 0;
+    const status = $("#saveStatus");
+    const btn = $("#btnRecord");
+    if (btn) btn.disabled = true;
+    if (status) status.textContent = "Saving recording…";
+    try {
+      const { blob, mime, durationMs } = await recorderHandle.stop();
+      recorderHandle = null;
+      recording = false;
+      lockShapeSource(false);
+      updateRecordUi(0);
+
+      if (!blob || blob.size < 800 || durationMs < 800) {
+        if (status) status.textContent = "Recording was too short. Try again.";
+        return;
+      }
+
+      const user = await fetchMe();
+      if (!user) {
+        $("#authDialog")?.showModal?.();
+        if (status) status.textContent = "Sign in to save the recording.";
+        return;
+      }
+      if (planExhausted()) {
+        showPlanLimitDialog();
+        if (status) status.textContent = "Please increase your plan to save.";
+        return;
+      }
+
+      saveParams(engine.params);
+      const data = await createRecordingSave(engine.params, blob, { durationMs, mime });
+      const save = data.save || data;
+      if (data.user) renderUsage(data.user);
+      if (status) status.textContent = `Saved “${save.title}”.`;
+      const help = $("#saveDialogHelp");
+      if (help) {
+        help.textContent = `“${save.title}” is in your library. Download it as 480p, 720p, 1080p, or 4K MP4 from Video.`;
+      }
+      $("#embedDialog")?.showModal?.();
+    } catch (err) {
+      recorderHandle = null;
+      recording = false;
+      lockShapeSource(false);
+      updateRecordUi(0);
+      if (err.data?.user) renderUsage(err.data.user, { prompt: err.status === 402 });
+      else if (err.status === 402) showPlanLimitDialog();
+      if (status) status.textContent = err.message || "Could not save recording.";
+    } finally {
+      stoppingRecord = false;
+      if (btn) btn.disabled = false;
+      lockSaveButton();
+    }
+  }
+
+  $("#btnRecord")?.addEventListener("click", async () => {
+    const status = $("#saveStatus");
+    if (recording) {
+      await stopRecordingAndSave();
+      return;
+    }
+
+    const user = await fetchMe();
+    if (!user) {
+      if (status) status.textContent = "Sign in to record to your library.";
+      $("#authDialog")?.showModal?.();
+      return;
+    }
+    if (planExhausted()) {
+      showPlanLimitDialog();
+      if (status) status.textContent = "Please increase your plan to record.";
+      return;
+    }
+
+    try {
+      recorderHandle = startCanvasRecording(engine.canvas, {
+        fps: 30,
+        bitsPerSecond: 8_000_000,
+        preferMime: "webm",
+      });
+    } catch (err) {
+      if (status) status.textContent = err.message || "Could not start recording.";
+      return;
+    }
+
+    recording = true;
+    lockShapeSource(true);
+    updateRecordUi(0);
+    if (status) {
+      status.textContent =
+        "Recording the artboard. Controllers stay live; letter, word, and image are locked.";
+    }
+    recordTimer = setInterval(() => {
+      if (!recorderHandle) return;
+      const elapsed = performance.now() - recorderHandle.startedAt;
+      updateRecordUi(elapsed);
+      if (elapsed >= MAX_RECORD_MS) stopRecordingAndSave();
+    }, 200);
+  });
+
   $("#btnSave")?.addEventListener("click", async () => {
     const status = $("#saveStatus");
     const btn = $("#btnSave");
+    if (recording) return;
     saveParams(engine.params);
 
     const user = await fetchMe();

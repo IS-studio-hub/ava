@@ -32,7 +32,7 @@
 
     <p class="library-status" id="libraryStatus" aria-live="polite"></p>
     <div class="library-grid" id="libraryGrid"></div>
-    <p class="library-empty" id="libraryEmpty" hidden>No saves yet. Open Studio, sign in, and press Save.</p>
+    <p class="library-empty" id="libraryEmpty" hidden>No saves yet. Open Studio, sign in, and press Save or Record.</p>
   </main>
 
   <!-- Offscreen canvas for video export -->
@@ -58,13 +58,16 @@
         <option value="4k">4K — 2160×2160 (MP4)</option>
         <option value="1080p" selected>1080p — 1080×1080 (MP4)</option>
         <option value="720p">720p — 720×720 (MP4)</option>
+        <option value="480p">480p — 480×480 (MP4)</option>
         <option value="web">Web — 480×480 (WebM)</option>
       </select>
-      <div class="slider-row">
-        <label class="label" for="exportDuration">Length (sec)</label>
-        <span class="value" data-for="exportDuration">6</span>
+      <div id="exportDurationFields">
+        <div class="slider-row">
+          <label class="label" for="exportDuration">Length (sec)</label>
+          <span class="value" data-for="exportDuration">6</span>
+        </div>
+        <input id="exportDuration" type="range" min="3" max="15" step="1" value="6" />
       </div>
-      <input id="exportDuration" type="range" min="3" max="15" step="1" value="6" />
       <p class="help" id="exportStatus" aria-live="polite"></p>
       <div class="embed-dialog__actions">
         <button type="button" class="btn btn--primary" id="btnStartVideo">Download</button>
