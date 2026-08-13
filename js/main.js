@@ -287,6 +287,56 @@ async function compressImageFile(file) {
   return canvas.toDataURL("image/jpeg", 0.74);
 }
 
+function bindAnimCards(engine) {
+  document.querySelectorAll(".anim-card[data-anim]").forEach((card) => {
+    const id = card.getAttribute("data-anim");
+    const input = card.querySelector(`#${CSS.escape(id)}`);
+    const body = card.querySelector(".anim-card__body");
+    const chevron = card.querySelector(".anim-card__chevron");
+    if (!input || !body || !chevron) return;
+
+    const title = card.querySelector(".anim-card__toggle span")?.textContent?.trim() || id;
+
+    function setOpen(open, { syncCheck = true } = {}) {
+      card.classList.toggle("is-open", open);
+      body.hidden = !open;
+      chevron.setAttribute("aria-expanded", open ? "true" : "false");
+      chevron.setAttribute("aria-label", open ? `Close ${title} settings` : `Open ${title} settings`);
+      if (syncCheck && input.checked !== open) {
+        input.checked = open;
+        engine.setParams({ [id]: open });
+      }
+    }
+
+    chevron.addEventListener("click", () => {
+      setOpen(body.hidden, { syncCheck: true });
+    });
+
+    input.addEventListener("change", () => {
+      engine.setParams({ [id]: input.checked });
+      setOpen(Boolean(input.checked), { syncCheck: false });
+    });
+
+    setOpen(Boolean(input.checked), { syncCheck: false });
+  });
+}
+
+function syncAnimCardsFromChecks() {
+  document.querySelectorAll(".anim-card[data-anim]").forEach((card) => {
+    const id = card.getAttribute("data-anim");
+    const input = card.querySelector(`#${CSS.escape(id)}`);
+    const body = card.querySelector(".anim-card__body");
+    const chevron = card.querySelector(".anim-card__chevron");
+    if (!input || !body || !chevron) return;
+    const open = Boolean(input.checked);
+    const title = card.querySelector(".anim-card__toggle span")?.textContent?.trim() || id;
+    card.classList.toggle("is-open", open);
+    body.hidden = !open;
+    chevron.setAttribute("aria-expanded", open ? "true" : "false");
+    chevron.setAttribute("aria-label", open ? `Close ${title} settings` : `Open ${title} settings`);
+  });
+}
+
 function bindStudio(engine) {
   const defaults = LetterFieldEngine.defaults();
   const letterInput = $("#letterInput");
@@ -701,10 +751,13 @@ function bindStudio(engine) {
   CHECKS.forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;
+    if (el.closest(".anim-card[data-anim]")) return;
     el.addEventListener("change", () => {
       engine.setParams({ [id]: el.checked });
     });
   });
+
+  bindAnimCards(engine);
 
   SELECTS.forEach((id) => {
     const el = document.getElementById(id);
@@ -1007,6 +1060,7 @@ async function loadSaveFromQuery(engine) {
       if (!el || engine.params[key] === undefined) return;
       el.checked = Boolean(engine.params[key]);
     });
+    syncAnimCardsFromChecks();
     SELECTS.forEach((key) => {
       const el = document.getElementById(key);
       if (!el || engine.params[key] === undefined) return;

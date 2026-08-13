@@ -76,7 +76,7 @@
               <input id="imageInput" class="file-input" type="file" accept="image/*" tabindex="-1" aria-hidden="true" />
               <div class="image-upload__row">
                 <button type="button" class="btn btn--ghost btn--small" id="btnPickImage" aria-describedby="imageHelp">Upload image</button>
-                <button type="button" class="btn btn--ghost btn--small" id="btnClearImage" hidden>Clear uploaded image</button>
+                <button type="button" class="btn btn--ghost btn--small" id="btnClearImage" hidden>Clear</button>
               </div>
               <img id="imagePreview" class="image-upload__preview" alt="Uploaded image preview" hidden />
             </div>
@@ -280,7 +280,7 @@
 
             <section class="block">
         <h2 class="block__title">Animation</h2>
-        <p class="help">Effects apply to every glyph. Sliders under each one only apply when that effect is on.</p>
+        <p class="help">Effects apply to every glyph. Open a dropdown to turn an effect on and edit its sliders.</p>
 
         <div class="slider-row">
           <label class="label" for="speed">Global speed</label>
@@ -288,158 +288,201 @@
         </div>
         <input id="speed" type="range" min="0" max="2" step="0.01" value="0.50" />
 
-        <div class="anim-card">
-          <label class="toggle">
-            <input id="animWave" type="checkbox" />
-            <span>Wave</span>
-          </label>
-          <div class="slider-row">
-            <label class="label" for="waveAmount">Amount</label>
-            <span class="value" data-for="waveAmount">0.35</span>
+        <div class="anim-card" data-anim="animWave">
+          <div class="anim-card__head">
+            <label class="toggle anim-card__toggle">
+              <input id="animWave" type="checkbox" />
+              <span>Wave</span>
+            </label>
+            <button type="button" class="anim-card__chevron" aria-expanded="false" aria-controls="animBodyWave" aria-label="Open Wave settings"></button>
           </div>
-          <input id="waveAmount" type="range" min="0" max="1.5" step="0.01" value="0.35" />
-          <div class="slider-row">
-            <label class="label" for="waveSpeed">Speed</label>
-            <span class="value" data-for="waveSpeed">1.00</span>
+          <div class="anim-card__body" id="animBodyWave" hidden>
+            <div class="slider-row">
+              <label class="label" for="waveAmount">Amount</label>
+              <span class="value" data-for="waveAmount">0.35</span>
+            </div>
+            <input id="waveAmount" type="range" min="0" max="1.5" step="0.01" value="0.35" />
+            <div class="slider-row">
+              <label class="label" for="waveSpeed">Speed</label>
+              <span class="value" data-for="waveSpeed">1.00</span>
+            </div>
+            <input id="waveSpeed" type="range" min="0.1" max="3" step="0.01" value="1" />
+            <div class="slider-row">
+              <label class="label" for="waveScale">Scale</label>
+              <span class="value" data-for="waveScale">2.40</span>
+            </div>
+            <input id="waveScale" type="range" min="0.5" max="6" step="0.01" value="2.4" />
           </div>
-          <input id="waveSpeed" type="range" min="0.1" max="3" step="0.01" value="1" />
-          <div class="slider-row">
-            <label class="label" for="waveScale">Scale</label>
-            <span class="value" data-for="waveScale">2.40</span>
-          </div>
-          <input id="waveScale" type="range" min="0.5" max="6" step="0.01" value="2.4" />
         </div>
 
-        <div class="anim-card">
-          <label class="toggle">
-            <input id="animDrift" type="checkbox" />
-            <span>Soft drift (subtle random motion)</span>
-          </label>
-          <div class="slider-row">
-            <label class="label" for="driftAmount">Amount</label>
-            <span class="value" data-for="driftAmount">0.10</span>
+        <div class="anim-card" data-anim="animDrift">
+          <div class="anim-card__head">
+            <label class="toggle anim-card__toggle">
+              <input id="animDrift" type="checkbox" />
+              <span>Soft drift</span>
+            </label>
+            <button type="button" class="anim-card__chevron" aria-expanded="false" aria-controls="animBodyDrift" aria-label="Open Soft drift settings"></button>
           </div>
-          <input id="driftAmount" type="range" min="0" max="0.4" step="0.01" value="0.10" />
-          <div class="slider-row">
-            <label class="label" for="driftSpeed">Speed</label>
-            <span class="value" data-for="driftSpeed">0.70</span>
+          <div class="anim-card__body" id="animBodyDrift" hidden>
+            <p class="help">Subtle random motion.</p>
+            <div class="slider-row">
+              <label class="label" for="driftAmount">Amount</label>
+              <span class="value" data-for="driftAmount">0.10</span>
+            </div>
+            <input id="driftAmount" type="range" min="0" max="0.4" step="0.01" value="0.10" />
+            <div class="slider-row">
+              <label class="label" for="driftSpeed">Speed</label>
+              <span class="value" data-for="driftSpeed">0.70</span>
+            </div>
+            <input id="driftSpeed" type="range" min="0.1" max="2.5" step="0.01" value="0.70" />
           </div>
-          <input id="driftSpeed" type="range" min="0.1" max="2.5" step="0.01" value="0.70" />
         </div>
 
-        <div class="anim-card">
-          <label class="toggle">
-            <input id="animShake" type="checkbox" />
-            <span>Shake</span>
-          </label>
-          <div class="slider-row">
-            <label class="label" for="shakeAmount">Amount</label>
-            <span class="value" data-for="shakeAmount">0.12</span>
+        <div class="anim-card" data-anim="animShake">
+          <div class="anim-card__head">
+            <label class="toggle anim-card__toggle">
+              <input id="animShake" type="checkbox" />
+              <span>Shake</span>
+            </label>
+            <button type="button" class="anim-card__chevron" aria-expanded="false" aria-controls="animBodyShake" aria-label="Open Shake settings"></button>
           </div>
-          <input id="shakeAmount" type="range" min="0" max="0.5" step="0.01" value="0.12" />
-          <div class="slider-row">
-            <label class="label" for="shakeSpeed">Speed</label>
-            <span class="value" data-for="shakeSpeed">2.40</span>
+          <div class="anim-card__body" id="animBodyShake" hidden>
+            <div class="slider-row">
+              <label class="label" for="shakeAmount">Amount</label>
+              <span class="value" data-for="shakeAmount">0.12</span>
+            </div>
+            <input id="shakeAmount" type="range" min="0" max="0.5" step="0.01" value="0.12" />
+            <div class="slider-row">
+              <label class="label" for="shakeSpeed">Speed</label>
+              <span class="value" data-for="shakeSpeed">2.40</span>
+            </div>
+            <input id="shakeSpeed" type="range" min="0.5" max="8" step="0.01" value="2.40" />
           </div>
-          <input id="shakeSpeed" type="range" min="0.5" max="8" step="0.01" value="2.40" />
         </div>
 
-        <div class="anim-card">
-          <label class="toggle">
-            <input id="animPointerSpin" type="checkbox" />
-            <span>Pointer spin</span>
-          </label>
-          <p class="help">Letters rotate toward / with pointer movement.</p>
-          <div class="slider-row">
-            <label class="label" for="pointerSpinAmount">Amount</label>
-            <span class="value" data-for="pointerSpinAmount">1.00</span>
+        <div class="anim-card" data-anim="animPointerSpin">
+          <div class="anim-card__head">
+            <label class="toggle anim-card__toggle">
+              <input id="animPointerSpin" type="checkbox" />
+              <span>Pointer spin</span>
+            </label>
+            <button type="button" class="anim-card__chevron" aria-expanded="false" aria-controls="animBodyPointerSpin" aria-label="Open Pointer spin settings"></button>
           </div>
-          <input id="pointerSpinAmount" type="range" min="0" max="2" step="0.01" value="1" />
-          <div class="slider-row">
-            <label class="label" for="pointerSpinLag">Lag / smoothness</label>
-            <span class="value" data-for="pointerSpinLag">0.18</span>
+          <div class="anim-card__body" id="animBodyPointerSpin" hidden>
+            <p class="help">Letters rotate toward / with pointer movement.</p>
+            <div class="slider-row">
+              <label class="label" for="pointerSpinAmount">Amount</label>
+              <span class="value" data-for="pointerSpinAmount">1.00</span>
+            </div>
+            <input id="pointerSpinAmount" type="range" min="0" max="2" step="0.01" value="1" />
+            <div class="slider-row">
+              <label class="label" for="pointerSpinLag">Lag / smoothness</label>
+              <span class="value" data-for="pointerSpinLag">0.18</span>
+            </div>
+            <input id="pointerSpinLag" type="range" min="0.02" max="0.6" step="0.01" value="0.18" />
           </div>
-          <input id="pointerSpinLag" type="range" min="0.02" max="0.6" step="0.01" value="0.18" />
         </div>
 
-        <div class="anim-card">
-          <label class="toggle">
-            <input id="animPulse" type="checkbox" />
-            <span>Pulse (size breathe)</span>
-          </label>
-          <div class="slider-row">
-            <label class="label" for="pulseAmount">Amount</label>
-            <span class="value" data-for="pulseAmount">0.18</span>
+        <div class="anim-card" data-anim="animPulse">
+          <div class="anim-card__head">
+            <label class="toggle anim-card__toggle">
+              <input id="animPulse" type="checkbox" />
+              <span>Pulse</span>
+            </label>
+            <button type="button" class="anim-card__chevron" aria-expanded="false" aria-controls="animBodyPulse" aria-label="Open Pulse settings"></button>
           </div>
-          <input id="pulseAmount" type="range" min="0" max="0.8" step="0.01" value="0.18" />
-          <div class="slider-row">
-            <label class="label" for="pulseSpeed">Speed</label>
-            <span class="value" data-for="pulseSpeed">1.20</span>
+          <div class="anim-card__body" id="animBodyPulse" hidden>
+            <p class="help">Size breathe.</p>
+            <div class="slider-row">
+              <label class="label" for="pulseAmount">Amount</label>
+              <span class="value" data-for="pulseAmount">0.18</span>
+            </div>
+            <input id="pulseAmount" type="range" min="0" max="0.8" step="0.01" value="0.18" />
+            <div class="slider-row">
+              <label class="label" for="pulseSpeed">Speed</label>
+              <span class="value" data-for="pulseSpeed">1.20</span>
+            </div>
+            <input id="pulseSpeed" type="range" min="0.2" max="4" step="0.01" value="1.20" />
           </div>
-          <input id="pulseSpeed" type="range" min="0.2" max="4" step="0.01" value="1.20" />
         </div>
 
-        <div class="anim-card">
-          <label class="toggle">
-            <input id="animTwinkle" type="checkbox" />
-            <span>Twinkle (opacity flicker)</span>
-          </label>
-          <div class="slider-row">
-            <label class="label" for="twinkleAmount">Amount</label>
-            <span class="value" data-for="twinkleAmount">0.22</span>
+        <div class="anim-card" data-anim="animTwinkle">
+          <div class="anim-card__head">
+            <label class="toggle anim-card__toggle">
+              <input id="animTwinkle" type="checkbox" />
+              <span>Twinkle</span>
+            </label>
+            <button type="button" class="anim-card__chevron" aria-expanded="false" aria-controls="animBodyTwinkle" aria-label="Open Twinkle settings"></button>
           </div>
-          <input id="twinkleAmount" type="range" min="0" max="0.8" step="0.01" value="0.22" />
-          <div class="slider-row">
-            <label class="label" for="twinkleSpeed">Speed</label>
-            <span class="value" data-for="twinkleSpeed">1.50</span>
+          <div class="anim-card__body" id="animBodyTwinkle" hidden>
+            <p class="help">Opacity flicker.</p>
+            <div class="slider-row">
+              <label class="label" for="twinkleAmount">Amount</label>
+              <span class="value" data-for="twinkleAmount">0.22</span>
+            </div>
+            <input id="twinkleAmount" type="range" min="0" max="0.8" step="0.01" value="0.22" />
+            <div class="slider-row">
+              <label class="label" for="twinkleSpeed">Speed</label>
+              <span class="value" data-for="twinkleSpeed">1.50</span>
+            </div>
+            <input id="twinkleSpeed" type="range" min="0.2" max="5" step="0.01" value="1.50" />
           </div>
-          <input id="twinkleSpeed" type="range" min="0.2" max="5" step="0.01" value="1.50" />
         </div>
 
-        <div class="anim-card">
-          <label class="toggle">
-            <input id="animRipple" type="checkbox" />
-            <span>Pointer ripple</span>
-          </label>
-          <p class="help">Push glyphs outward from the pointer.</p>
-          <div class="slider-row">
-            <label class="label" for="rippleAmount">Amount</label>
-            <span class="value" data-for="rippleAmount">0.25</span>
+        <div class="anim-card" data-anim="animRipple">
+          <div class="anim-card__head">
+            <label class="toggle anim-card__toggle">
+              <input id="animRipple" type="checkbox" />
+              <span>Pointer ripple</span>
+            </label>
+            <button type="button" class="anim-card__chevron" aria-expanded="false" aria-controls="animBodyRipple" aria-label="Open Pointer ripple settings"></button>
           </div>
-          <input id="rippleAmount" type="range" min="0" max="1" step="0.01" value="0.25" />
-          <div class="slider-row">
-            <label class="label" for="rippleRadius">Radius</label>
-            <span class="value" data-for="rippleRadius">0.28</span>
+          <div class="anim-card__body" id="animBodyRipple" hidden>
+            <p class="help">Push glyphs outward from the pointer.</p>
+            <div class="slider-row">
+              <label class="label" for="rippleAmount">Amount</label>
+              <span class="value" data-for="rippleAmount">0.25</span>
+            </div>
+            <input id="rippleAmount" type="range" min="0" max="1" step="0.01" value="0.25" />
+            <div class="slider-row">
+              <label class="label" for="rippleRadius">Radius</label>
+              <span class="value" data-for="rippleRadius">0.28</span>
+            </div>
+            <input id="rippleRadius" type="range" min="0.08" max="0.7" step="0.01" value="0.28" />
           </div>
-          <input id="rippleRadius" type="range" min="0.08" max="0.7" step="0.01" value="0.28" />
         </div>
 
-        <div class="anim-card">
-          <label class="toggle">
-            <input id="animBubble" type="checkbox" />
-            <span>Bubble</span>
-          </label>
-          <p class="help">Spherical lens bulge — glyphs swell and fan around a moving bubble. Pointer steers it.</p>
-          <div class="slider-row">
-            <label class="label" for="bubbleAmount">Amount</label>
-            <span class="value" data-for="bubbleAmount">0.90</span>
+        <div class="anim-card" data-anim="animBubble">
+          <div class="anim-card__head">
+            <label class="toggle anim-card__toggle">
+              <input id="animBubble" type="checkbox" />
+              <span>Bubble</span>
+            </label>
+            <button type="button" class="anim-card__chevron" aria-expanded="false" aria-controls="animBodyBubble" aria-label="Open Bubble settings"></button>
           </div>
-          <input id="bubbleAmount" type="range" min="0" max="2" step="0.01" value="0.90" />
-          <div class="slider-row">
-            <label class="label" for="bubbleRadius">Radius</label>
-            <span class="value" data-for="bubbleRadius">0.36</span>
+          <div class="anim-card__body" id="animBodyBubble" hidden>
+            <p class="help">Spherical lens bulge — glyphs swell and fan around a moving bubble. Pointer steers it.</p>
+            <div class="slider-row">
+              <label class="label" for="bubbleAmount">Amount</label>
+              <span class="value" data-for="bubbleAmount">0.90</span>
+            </div>
+            <input id="bubbleAmount" type="range" min="0" max="2" step="0.01" value="0.90" />
+            <div class="slider-row">
+              <label class="label" for="bubbleRadius">Radius</label>
+              <span class="value" data-for="bubbleRadius">0.36</span>
+            </div>
+            <input id="bubbleRadius" type="range" min="0.08" max="0.8" step="0.01" value="0.36" />
+            <div class="slider-row">
+              <label class="label" for="bubbleSpeed">Speed</label>
+              <span class="value" data-for="bubbleSpeed">0.55</span>
+            </div>
+            <input id="bubbleSpeed" type="range" min="0" max="2.5" step="0.01" value="0.55" />
+            <div class="slider-row">
+              <label class="label" for="bubbleScale">Letter scale</label>
+              <span class="value" data-for="bubbleScale">1.00</span>
+            </div>
+            <input id="bubbleScale" type="range" min="0" max="2" step="0.01" value="1" />
           </div>
-          <input id="bubbleRadius" type="range" min="0.08" max="0.8" step="0.01" value="0.36" />
-          <div class="slider-row">
-            <label class="label" for="bubbleSpeed">Speed</label>
-            <span class="value" data-for="bubbleSpeed">0.55</span>
-          </div>
-          <input id="bubbleSpeed" type="range" min="0" max="2.5" step="0.01" value="0.55" />
-          <div class="slider-row">
-            <label class="label" for="bubbleScale">Letter scale</label>
-            <span class="value" data-for="bubbleScale">1.00</span>
-          </div>
-          <input id="bubbleScale" type="range" min="0" max="2" step="0.01" value="1" />
         </div>
 
         <label class="toggle">

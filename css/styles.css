@@ -500,8 +500,14 @@ body {
 
 .image-upload__row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.4rem;
+}
+
+.image-upload__row .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .image-upload__preview {
@@ -940,16 +946,70 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .anim-card {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.75rem 0.7rem;
+  gap: 0;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
 }
 
-.anim-card .toggle {
-  margin-bottom: 0.15rem;
+.anim-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.55rem 0.55rem 0.7rem;
+  min-height: 44px;
+}
+
+.anim-card__toggle {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
   font-weight: 600;
+}
+
+.anim-card__chevron {
+  flex: 0 0 auto;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+}
+
+.anim-card__chevron::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  translate: 0 -0.1rem;
+  transition: transform 0.15s ease;
+}
+
+.anim-card.is-open .anim-card__chevron::before {
+  transform: rotate(225deg);
+  translate: 0 0.12rem;
+}
+
+.anim-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0 0.7rem 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.anim-card__body[hidden] {
+  display: none !important;
 }
 
 .library-body {
