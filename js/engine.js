@@ -386,19 +386,18 @@ export class LetterFieldEngine {
     this._sampleKey = key;
 
     if (p.layout === "radial") {
-      // Concentric rings — matches spiral G references
-      const rings = Math.max(14, Math.round(density * 0.55));
+      // Concentric spiral rings that fill the letter field
+      const rings = Math.max(16, Math.round(density * 0.7));
       for (let r = 1; r <= rings; r++) {
-        const radius = (r / rings) * 0.495 * spacing;
-        // denser angular packing like the refs
-        const count = Math.max(8, Math.round(r * 5.8 * (1.05 / Math.max(0.7, spacing))));
+        const radius = (r / rings) * 0.48 * Math.min(1.35, spacing);
+        const count = Math.max(10, Math.round(r * 6.2 * (1.05 / Math.max(0.7, Math.min(spacing, 2)))));
         for (let i = 0; i < count; i++) {
-          const a0 = (i / count) * Math.PI * 2 + r * 0.045;
+          const a0 = (i / count) * Math.PI * 2 + r * 0.085;
           let jr = 0;
           let ja = 0;
           if (p.organic) {
-            jr = (hash01(i, r) - 0.5) * 0.006 * p.jitter;
-            ja = (hash01(i + 3, r + 5) - 0.5) * 0.04 * p.jitter;
+            jr = (hash01(i, r) - 0.5) * 0.008 * p.jitter;
+            ja = (hash01(i + 3, r + 5) - 0.5) * 0.05 * p.jitter;
           }
           samples.push({
             radius: radius + jr,
@@ -406,22 +405,110 @@ export class LetterFieldEngine {
             ringT: r / rings,
             i,
             j: r,
+            sizeScale: 1,
+            phase: hash01(i, r) * Math.PI * 2,
           });
         }
       }
     } else if (p.layout === "flow") {
-      const cols = Math.round(density * 0.85);
-      const rows = Math.round(density * 0.85);
+      // Seed points along a static curl/flow field so the base pattern reads as currents
+      const cols = Math.max(8, Math.round(density * 0.92));
+      const rows = Math.max(8, Math.round(density * 0.92));
       for (let j = 0; j < rows; j++) {
         for (let i = 0; i < cols; i++) {
-          let nx = ((i + 0.5) / cols - 0.5) * spacing;
-          let ny = ((j + 0.5) / rows - 0.5) * spacing;
+          const u = (i + 0.5) / cols;
+          const v = (j + 0.5) / rows;
+          const ang = fbm(u * 3.2, v * 3.2, 2) * Math.PI * 2;
+          const bend = 0.055 * Math.min(1.4, spacing);
+          let nx = (u - 0.5) * spacing + Math.cos(ang) * bend;
+          let ny = (v - 0.5) * spacing + Math.sin(ang) * bend;
+          // Second curl pass for longer streamlines
+          const ang2 = fbm(nx * 4 + 2, ny * 4 - 1, 2) * Math.PI * 2;
+          nx += Math.cos(ang2) * bend * 0.55;
+          ny += Math.sin(ang2) * bend * 0.55;
           if (p.organic) {
-            nx += (hash01(i, j) - 0.5) * 0.01 * p.jitter;
-            ny += (hash01(i + 9, j + 2) - 0.5) * 0.01 * p.jitter;
+            nx += (hash01(i, j) - 0.5) * 0.012 * p.jitter;
+            ny += (hash01(i + 9, j + 2) - 0.5) * 0.012 * p.jitter;
           }
-          samples.push({ nx, ny, i, j, ringT: 0.5 });
+          samples.push({
+            nx,
+            ny,
+            i,
+            j,
+            ringT: 0.5,
+            sizeScale: 1,
+            phase: hash01(i + 1, j + 3) * Math.PI * 2,
+            flowAng: ang,
+          });
         }
+      }
+    } else if (p.layout === "water") {
+      // Bubble packing: mixed sizes with forced spacing so neighbors don't overlap
+      const target = Math.max(40, Math.round(density * density * 0.42));
+      const placed = [];
+      const maxAttempts = target * 28;
+      let attempts = 0;
+      while (placed.length < target && attempts < maxAttempts) {
+        attempts += 1;
+        // Mostly small bubbles, some medium, a few larger
+        const roll = hash01(attempts, density + 7);
+        const sizeScale = roll < 0.62 ? 0.55 + roll * 0.35 : roll < 0.88 ? 0.95 + roll * 0.45 : 1.35 + roll * 0.7;
+        const minDist = (0.018 + sizeScale * 0.022) * Math.max(0.55, Math.min(spacing, 2.2));
+        let nx = (hash01(attempts * 3, 11) - 0.5) * spacing * 0.98;
+        let ny = (hash01(attempts * 5, 17) - 0.5) * spacing * 0.98;
+        if (p.organic) {
+          nx += (hash01(attempts, 21) - 0.5) * 0.01 * p.jitter;
+          ny += (hash01(attempts, 29) - 0.5) * 0.01 * p.jitter;
+        }
+        let ok = true;
+        for (let k = 0; k < placed.length; k++) {
+          const o = placed[k];
+          const dx = nx - o.nx;
+          const dy = ny - o.ny;
+          const need = (minDist + o.minDist) * 0.55;
+          if (dx * dx + dy * dy < need * need) {
+            ok = false;
+            break;
+          }
+        }
+        if (!ok) continue;
+        placed.push({
+          nx,
+          ny,
+          i: placed.length,
+          j: Math.floor(sizeScale * 10),
+          ringT: sizeScale,
+          sizeScale,
+          minDist,
+          phase: hash01(attempts, 41) * Math.PI * 2,
+        });
+      }
+      // Light relaxation so bubbles settle with even force space
+      for (let pass = 0; pass < 4; pass++) {
+        for (let a = 0; a < placed.length; a++) {
+          for (let b = a + 1; b < placed.length; b++) {
+            const A = placed[a];
+            const B = placed[b];
+            let dx = B.nx - A.nx;
+            let dy = B.ny - A.ny;
+            let dist = Math.hypot(dx, dy) || 1e-5;
+            const need = (A.minDist + B.minDist) * 0.52;
+            if (dist >= need) continue;
+            const push = ((need - dist) / dist) * 0.5;
+            dx *= push;
+            dy *= push;
+            A.nx -= dx;
+            A.ny -= dy;
+            B.nx += dx;
+            B.ny += dy;
+          }
+        }
+      }
+      for (let i = 0; i < placed.length; i++) {
+        const b = placed[i];
+        b.nx = clamp(b.nx, -0.49 * spacing, 0.49 * spacing);
+        b.ny = clamp(b.ny, -0.49 * spacing, 0.49 * spacing);
+        samples.push(b);
       }
     } else {
       // Full artboard grid — equal cell spacing, edge to edge (start state)
@@ -436,7 +523,7 @@ export class LetterFieldEngine {
             nx += (hash01(i, j) - 0.5) * 0.008 * p.jitter;
             ny += (hash01(i + 4, j + 7) - 0.5) * 0.008 * p.jitter;
           }
-          samples.push({ nx, ny, i, j, ringT: 0.5 });
+          samples.push({ nx, ny, i, j, ringT: 0.5, sizeScale: 1, phase: 0 });
         }
       }
     }
@@ -613,6 +700,8 @@ export class LetterFieldEngine {
       return;
     }
 
+    const twist = params.twist || 0;
+
     for (let s = 0; s < samples.length; s++) {
       const sm = samples[s];
       let nx = layout === "radial" ? 0 : sm.nx;
@@ -620,9 +709,12 @@ export class LetterFieldEngine {
       let angle = 0;
       let homeX;
       let homeY;
+      const phase = sm.phase || 0;
 
       if (layout === "radial") {
-        const a = sm.a0;
+        // Spiral spin + twist so rings read clearly vs grid
+        const spin = t * 0.22 * (1 - sm.ringT * 0.35);
+        const a = sm.a0 + spin + twist * sm.ringT * 2.4;
         homeX = Math.cos(a) * sm.radius;
         homeY = Math.sin(a) * sm.radius;
         nx = homeX;
@@ -636,6 +728,44 @@ export class LetterFieldEngine {
       // Influence at home position so shape stays readable while animating
       const { d, fill, edge, on } = this.influence(homeX, homeY);
       const shapeMix = on * shapeAmt;
+
+      if (layout === "flow") {
+        // Advect along a living noise flow field while keeping letter membership
+        const ft = t * 0.28;
+        const flowAng =
+          (sm.flowAng || 0) +
+          fbm(homeX * 2.4 + ft * 0.45, homeY * 2.4 - ft * 0.35, 2) * Math.PI * 2;
+        const stream = 0.028 + 0.018 * Math.sin(ft + phase);
+        nx += Math.cos(flowAng) * stream;
+        ny += Math.sin(flowAng) * stream;
+        nx += Math.cos(flowAng + 1.1) * Math.sin(ft * 1.4 + phase) * 0.014;
+        ny += Math.sin(flowAng + 1.1) * Math.cos(ft * 1.2 + phase * 0.7) * 0.014;
+        angle += flowAng * 0.35 + Math.sin(ft + phase) * 0.25;
+      }
+
+      if (layout === "water") {
+        // Sea-surface bob: soft rise/fall + sideways drift; glyphs stay linked via packed homes
+        const wt = t * 0.9;
+        const bob = Math.sin(wt * 1.15 + phase) * 0.016 + Math.sin(wt * 0.55 + phase * 1.7) * 0.01;
+        const sway =
+          Math.cos(wt * 0.72 + phase * 0.9) * 0.014 +
+          (fbm(homeX * 3 + wt * 0.2, homeY * 3 - wt * 0.15, 1) - 0.5) * 0.02;
+        nx += sway;
+        ny += bob + Math.sin(wt * 0.4 + homeX * 8) * 0.008;
+        angle += Math.sin(wt * 0.85 + phase) * 0.35;
+      }
+
+      if (twist > 0.01 && layout !== "radial") {
+        const r2 = homeX * homeX + homeY * homeY;
+        const tw = twist * morph * r2 * 3.2;
+        const c = Math.cos(tw);
+        const s = Math.sin(tw);
+        const ox = nx;
+        const oy = ny;
+        nx = ox * c - oy * s;
+        ny = ox * s + oy * c;
+        angle += tw;
+      }
 
       if (params.animWave) {
         const ws = params.waveScale || 2.4;
@@ -703,7 +833,8 @@ export class LetterFieldEngine {
         angle += ptrAngle * (params.pointerSpinAmount || 1) * 0.65;
       }
 
-      if (layout === "radial" && nx * nx + ny * ny > 0.3) continue;
+      // Soft artboard cull (was too aggressive for radial outer rings)
+      if (Math.abs(nx) > 0.56 || Math.abs(ny) > 0.56) continue;
 
       const g = this.letterField.gradient(homeX, homeY);
       const gLen = Math.hypot(g.x, g.y) + 1e-4;
@@ -731,7 +862,13 @@ export class LetterFieldEngine {
       const y = cy + ny * size;
 
       let glyphPx = lerp(bgGlyph, shapeGlyph, shapeMix);
-      if (layout === "radial") glyphPx *= 0.9 + sm.ringT * 0.18;
+      if (layout === "radial") glyphPx *= 0.88 + sm.ringT * 0.22;
+      if (layout === "water") {
+        // Bubble sizes: many small, some larger — still readable as one letter
+        const bubble = sm.sizeScale || 1;
+        glyphPx *= 0.55 + bubble * 0.85;
+      }
+      if (layout === "flow") glyphPx *= 0.92 + 0.12 * Math.sin(phase + t);
 
       if (params.animPulse) {
         const pt = t * (params.pulseSpeed || 1.2);
