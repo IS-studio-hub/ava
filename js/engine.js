@@ -356,7 +356,7 @@ export class LetterFieldEngine {
    */
   rebuildSamples() {
     const p = this.params;
-    const density = Math.min(72, Math.round(p.density));
+    const density = Math.min(1000, Math.max(2, Math.round(p.density)));
     const spacing = p.spacing;
     const samples = [];
     const key = `${p.layout}|${density}|${spacing}|${p.organic}|${p.jitter}`;
@@ -535,7 +535,7 @@ export class LetterFieldEngine {
     const bulge = params.bulge * morph;
     const warp = params.warp * morph;
     const layout = params.layout;
-    const density = Math.min(72, Math.round(params.density));
+    const density = Math.min(1000, Math.max(2, Math.round(params.density)));
     const cell = size / Math.max(2, density);
     const bgGlyph = cell * params.glyphSize;
     const shapeGlyph = cell * params.glyphSize * (params.shapeSize ?? 2);
@@ -823,7 +823,7 @@ export class LetterFieldEngine {
       const v = parseFloat(q.get("letterContrast"));
       if (Number.isFinite(v)) out.shapeAmount = Math.max(0, Math.min(1, v / 2.5));
     }
-    if (out.density > 72) out.density = 72;
+    if (out.density > 1000) out.density = 1000;
     // Migrate old 0–1 merge scale → −20…100
     if (Number.isFinite(out.wordMerge) && out.wordMerge > 0 && out.wordMerge <= 1) {
       out.wordMerge = Math.round(out.wordMerge * 100);
