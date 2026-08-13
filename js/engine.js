@@ -661,7 +661,8 @@ export class LetterFieldEngine {
         const u = dist / R;
         if (u < 1.45) {
           const sphere = u < 1 ? Math.sqrt(Math.max(0, 1 - u * u)) : 0;
-          const rim = u < 1 ? 1 : Math.exp(-((u - 1) * 3.2) ** 2);
+          const edge = (u - 1) * 3.2;
+          const rim = u < 1 ? 1 : Math.exp(-(edge * edge));
           const z = sphere * rim;
           const amt = params.bubbleAmount || 0;
           const cam = 1.2;
