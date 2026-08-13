@@ -23,7 +23,10 @@ async function billingRequest(path, { method = "POST", body } = {}) {
 
 function returnTo() {
   try {
-    return new URL("./", window.location.href).href.replace(/\/$/, "");
+    const u = new URL(window.location.href);
+    u.search = "";
+    u.hash = "";
+    return u.href.replace(/\/$/, "");
   } catch {
     return window.location.origin;
   }

@@ -124,8 +124,7 @@ function renderAuthBar() {
     bar.innerHTML = `
       <a class="btn btn--ghost btn--small" href="studio.html">Studio</a>
       <a class="btn btn--ghost btn--small" href="library.html">Library</a>
-      <button type="button" class="btn btn--ghost btn--small" id="btnManageBilling">Billing</button>
-      <span class="stage__auth-user" title="${currentUser.email}">${currentUser.name || currentUser.email} · ${plan}</span>
+      <a class="btn btn--ghost btn--small" href="account.html" title="${currentUser.email}">${currentUser.name || currentUser.email} · ${plan}</a>
       <button type="button" class="btn btn--ghost btn--small" id="btnHomeSignOut">Sign out</button>
     `;
     $("#btnHomeSignOut")?.addEventListener("click", async () => {
@@ -134,7 +133,6 @@ function renderAuthBar() {
       renderAuthBar();
       renderPlanButtons();
     });
-    $("#btnManageBilling")?.addEventListener("click", () => startPortal());
     renderPlanButtons();
     return;
   }

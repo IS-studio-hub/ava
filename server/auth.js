@@ -212,4 +212,50 @@ router.get("/me", requireAuth, (req, res) => {
   res.json({ user: req.user });
 });
 
+router.patch("/me", requireAuth, async (req, res) => {
+  try {
+    const name = String(req.body?.name || "").trim().slice(0, 80);
+    if (!name) return res.status(400).json({ error: "Name is required" });
+
+    const db = getDb();
+    await db.collection("users").updateOne(
+      { _id: new ObjectId(req.user.id) },
+      { $set: { name, updatedAt: new Date() } }
+    );
+    const doc = await db.collection("users").findOne({ _id: new ObjectId(req.user.id) });
+    res.json({ user: publicUser(doc) });
+  } catch (err) {
+    console.error("update profile", err);
+    res.status(500).json({ error: "Could not update profile" });
+  }
+});
+
+router.post("/password", requireAuth, async (req, res) => {
+  try {
+    const currentPassword = String(req.body?.currentPassword || "");
+    const nextPassword = String(req.body?.password || "");
+    if (!currentPassword) return res.status(400).json({ error: "Current password is required" });
+    if (nextPassword.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters" });
+    }
+
+    const db = getDb();
+    const doc = await db.collection("users").findOne({ _id: new ObjectId(req.user.id) });
+    if (!doc) return res.status(404).json({ error: "User not found" });
+
+    const ok = await bcrypt.compare(currentPassword, doc.passwordHash);
+    if (!ok) return res.status(401).json({ error: "Current password is incorrect" });
+
+    const passwordHash = await bcrypt.hash(nextPassword, 10);
+    await db.collection("users").updateOne(
+      { _id: doc._id },
+      { $set: { passwordHash, updatedAt: new Date() } }
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("update password", err);
+    res.status(500).json({ error: "Could not update password" });
+  }
+});
+
 export default router;

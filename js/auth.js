@@ -113,3 +113,18 @@ export async function fetchMe() {
     return null;
   }
 }
+
+export async function updateProfile({ name }) {
+  const data = await request("/api/auth/me", {
+    method: "PATCH",
+    body: { name },
+  });
+  return data.user;
+}
+
+export async function updatePassword({ currentPassword, password }) {
+  return request("/api/auth/password", {
+    method: "POST",
+    body: { currentPassword, password },
+  });
+}

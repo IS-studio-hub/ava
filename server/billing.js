@@ -121,14 +121,17 @@ router.post("/checkout", requireAuth, async (req, res) => {
     }
 
     const returnTo = safeReturnTo(req.body?.returnTo);
+    const pageReturn = returnTo.endsWith(".html");
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
       client_reference_id: req.user.id,
       allow_promotion_codes: true,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${returnTo}/?billing=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${returnTo}/#plans`,
+      success_url: pageReturn
+        ? `${returnTo}?billing=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`
+        : `${returnTo}/?billing=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: pageReturn ? `${returnTo}` : `${returnTo}/#plans`,
       metadata: { avaUserId: req.user.id, plan },
       subscription_data: {
         metadata: { avaUserId: req.user.id, plan },
@@ -192,7 +195,7 @@ router.post("/portal", requireAuth, async (req, res) => {
     const returnTo = safeReturnTo(req.body?.returnTo);
     const portal = await stripe.billingPortal.sessions.create({
       customer: doc.stripeCustomerId,
-      return_url: `${returnTo}/#plans`,
+      return_url: returnTo.endsWith(".html") ? returnTo : `${returnTo}/#plans`,
     });
     res.json({ url: portal.url });
   } catch (err) {
