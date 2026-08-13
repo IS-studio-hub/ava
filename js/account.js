@@ -9,6 +9,7 @@ import {
 import { confirmCheckout, createPortal, switchPlan } from "./billing.js";
 import { usageLabel } from "./usage.js";
 import { bindPlanLimitDialog, showPlanLimitDialog } from "./planLimit.js";
+import { bindTabs, enhanceDialog, showFieldError } from "./a11y.js";
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -47,6 +48,10 @@ function setAuthMode(next) {
   const signupMode = authMode === "signup";
   $("#tabSignin")?.classList.toggle("is-active", !signupMode);
   $("#tabSignup")?.classList.toggle("is-active", signupMode);
+  $("#tabSignin")?.setAttribute("aria-selected", signupMode ? "false" : "true");
+  $("#tabSignup")?.setAttribute("aria-selected", signupMode ? "true" : "false");
+  if ($("#tabSignin")) $("#tabSignin").tabIndex = signupMode ? -1 : 0;
+  if ($("#tabSignup")) $("#tabSignup").tabIndex = signupMode ? 0 : -1;
   const nameField = $("#authNameField");
   if (nameField) nameField.hidden = !signupMode;
   if ($("#authTitle")) $("#authTitle").textContent = signupMode ? "Create account" : "Sign in";
@@ -206,8 +211,12 @@ function bindForms() {
 }
 
 function bindAuth() {
-  $("#tabSignin")?.addEventListener("click", () => setAuthMode("signin"));
-  $("#tabSignup")?.addEventListener("click", () => setAuthMode("signup"));
+  bindTabs($(".auth-tabs"), {
+    onChange(tab) {
+      setAuthMode(tab.getAttribute("data-mode") || "signin");
+    },
+  });
+  enhanceDialog($("#authDialog"));
   $("#authCancel")?.addEventListener("click", () => $("#authDialog")?.close?.());
 
   $("#authForm")?.addEventListener("submit", async (e) => {
@@ -215,10 +224,7 @@ function bindAuth() {
     const errorEl = $("#authError");
     const submit = $("#authSubmit");
     const form = $("#authForm");
-    if (errorEl) {
-      errorEl.hidden = true;
-      errorEl.textContent = "";
-    }
+    showFieldError(errorEl, [$("#authEmail"), $("#authPassword")], "");
     if (submit) submit.disabled = true;
     try {
       const payload = {
@@ -230,13 +236,13 @@ function bindAuth() {
         const result = await signup(payload);
         form?.reset();
         setAuthMode("signin");
-        if (errorEl) {
-          errorEl.style.color = "#b7d7b0";
-          errorEl.textContent =
-            result.message ||
-            "Check your email and click the verification button to create your account.";
-          errorEl.hidden = false;
-        }
+        showFieldError(
+          errorEl,
+          [$("#authEmail"), $("#authPassword")],
+          result.message ||
+            "Check your email and click the verification button to create your account.",
+          { ok: true }
+        );
       } else {
         currentUser = await signin(payload);
         $("#authDialog")?.close?.();
@@ -245,11 +251,7 @@ function bindAuth() {
         setStatus(`Signed in as ${currentUser.email}.`, true);
       }
     } catch (err) {
-      if (errorEl) {
-        errorEl.style.color = "";
-        errorEl.textContent = err.message || "Something went wrong";
-        errorEl.hidden = false;
-      }
+      showFieldError(errorEl, [$("#authEmail"), $("#authPassword")], err.message || "Something went wrong");
     } finally {
       if (submit) submit.disabled = false;
     }

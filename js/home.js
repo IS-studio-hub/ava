@@ -1,6 +1,13 @@
 import { fetchMe, signin, signout, signup } from "./auth.js";
 import { confirmCheckout, createCheckout, createPortal } from "./billing.js";
 import { LetterFieldEngine } from "./engine.js";
+import {
+  bindCanvasKeyboard,
+  bindMobileNav,
+  bindTabs,
+  enhanceDialog,
+  showFieldError,
+} from "./a11y.js";
 
 const PENDING_PLAN_KEY = "ava.pendingPlan";
 
@@ -14,6 +21,10 @@ function setAuthMode(next) {
   const signupMode = authMode === "signup";
   $("#tabSignin")?.classList.toggle("is-active", !signupMode);
   $("#tabSignup")?.classList.toggle("is-active", signupMode);
+  $("#tabSignin")?.setAttribute("aria-selected", signupMode ? "false" : "true");
+  $("#tabSignup")?.setAttribute("aria-selected", signupMode ? "true" : "false");
+  if ($("#tabSignin")) $("#tabSignin").tabIndex = signupMode ? -1 : 0;
+  if ($("#tabSignup")) $("#tabSignup").tabIndex = signupMode ? 0 : -1;
   const nameField = $("#authNameField");
   if (nameField) nameField.hidden = !signupMode;
   if ($("#authTitle")) $("#authTitle").textContent = signupMode ? "Create account" : "Sign in";
@@ -146,8 +157,12 @@ function renderAuthBar() {
 }
 
 function bindAuth() {
-  $("#tabSignin")?.addEventListener("click", () => setAuthMode("signin"));
-  $("#tabSignup")?.addEventListener("click", () => setAuthMode("signup"));
+  bindTabs($(".auth-tabs"), {
+    onChange(tab) {
+      setAuthMode(tab.getAttribute("data-mode") || "signin");
+    },
+  });
+  enhanceDialog($("#authDialog"));
   $("#authCancel")?.addEventListener("click", () => $("#authDialog")?.close?.());
   $("#btnHeroStart")?.addEventListener("click", () => openAuth("signup"));
   document.querySelectorAll("[data-auth]").forEach((btn) => {
@@ -162,10 +177,7 @@ function bindAuth() {
     const errorEl = $("#authError");
     const submit = $("#authSubmit");
     const form = $("#authForm");
-    if (errorEl) {
-      errorEl.hidden = true;
-      errorEl.textContent = "";
-    }
+    showFieldError(errorEl, [$("#authEmail"), $("#authPassword")], "");
     if (submit) submit.disabled = true;
     try {
       const payload = {
@@ -177,13 +189,13 @@ function bindAuth() {
         const result = await signup(payload);
         form?.reset();
         setAuthMode("signin");
-        if (errorEl) {
-          errorEl.style.color = "#b7d7b0";
-          errorEl.textContent =
-            result.message ||
-            "Check your email and click the verification button to create your account.";
-          errorEl.hidden = false;
-        }
+        showFieldError(
+          errorEl,
+          [$("#authEmail"), $("#authPassword")],
+          result.message ||
+            "Check your email and click the verification button to create your account.",
+          { ok: true }
+        );
       } else {
         currentUser = await signin(payload);
         $("#authDialog")?.close?.();
@@ -201,11 +213,7 @@ function bindAuth() {
         }
       }
     } catch (err) {
-      if (errorEl) {
-        errorEl.style.color = "";
-        errorEl.textContent = err.message || "Something went wrong";
-        errorEl.hidden = false;
-      }
+      showFieldError(errorEl, [$("#authEmail"), $("#authPassword")], err.message || "Something went wrong");
     } finally {
       if (submit) submit.disabled = false;
     }
@@ -254,12 +262,18 @@ function startPreview() {
   frame?.addEventListener("pointerleave", () => {
     engine.setPointer(0, 0, false);
   });
+  bindCanvasKeyboard(canvas, engine);
 }
 
 async function main() {
   const year = $("#homeYear");
   if (year) year.textContent = String(new Date().getFullYear());
   bindAuth();
+  bindMobileNav({
+    toggle: $("#btnHomeMenu"),
+    nav: $("#homeNavLinks"),
+    wrap: $("#homeNav"),
+  });
   currentUser = await fetchMe();
   renderAuthBar();
   startPreview();

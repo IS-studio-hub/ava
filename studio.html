@@ -10,8 +10,10 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
+  <a class="skip-link" href="#field">Skip to artboard</a>
+  <a class="skip-link" href="#panel">Skip to controls</a>
   <div id="app">
-    <main class="stage">
+    <main class="stage" id="main">
       <header class="stage__brand">
         <a class="library-brand" href="index.html">
           <span class="stage__logo">Ava</span>
@@ -23,13 +25,13 @@
         <button type="button" class="btn btn--ghost btn--small" id="btnOpenAuth">Sign in</button>
       </div>
       <div class="stage__frame">
-        <canvas id="field" width="900" height="900" aria-label="Letter field animation"></canvas>
-        <span class="stage__rec" id="recIndicator" hidden>REC</span>
+        <canvas id="field" width="900" height="900" tabindex="0" aria-label="Letter field artboard. Arrow keys move the pointer for spin, ripple, and bubble."></canvas>
+        <span class="stage__rec" id="recIndicator" hidden role="status" aria-live="assertive">REC</span>
       </div>
-        <p class="stage__hint">Move pointer for spin / ripple / bubble · Toggle animations in Controls</p>
+        <p class="stage__hint">Pointer or arrow keys for spin / ripple / bubble. Animations are in Controls.</p>
     </main>
 
-    <aside class="panel" id="panel">
+    <aside class="panel" id="panel" aria-label="Studio controls">
       <div class="panel__scroll">
       <div class="panel__head">
         <h1>Controls</h1>
@@ -37,18 +39,31 @@
       </div>
 
       <section class="block">
-        <h2 class="block__title">Letter</h2>
+        <h2 class="block__title" id="letterHeading">Letter</h2>
+        <div id="shapeSource">
         <label class="label" for="letterInput">Main letter</label>
-        <input id="letterInput" class="text-input text-input--letter" type="text" maxlength="1" value="G" autocomplete="off" spellcheck="false" />
+        <input id="letterInput" class="text-input text-input--letter" type="text" maxlength="1" value="G" autocomplete="off" spellcheck="false" aria-describedby="wordHelp" />
         <div class="script-toggle" id="scriptToggle" role="tablist" aria-label="Letter language">
-          <button type="button" class="script-toggle__btn is-active" id="scriptLatin">English</button>
-          <button type="button" class="script-toggle__btn" id="scriptHebrew">עברית</button>
+          <button type="button" class="script-toggle__btn is-active" role="tab" id="scriptLatin" aria-selected="true" tabindex="0">English</button>
+          <button type="button" class="script-toggle__btn" role="tab" id="scriptHebrew" aria-selected="false" tabindex="-1">עברית</button>
         </div>
-        <div class="presets" id="letterPresets" aria-label="Quick letters"></div>
+        <div class="presets" id="letterPresets" role="listbox" aria-label="Quick letters"></div>
 
         <label class="label" for="wordInput">Word</label>
-        <input id="wordInput" class="text-input" type="text" maxlength="10" value="" placeholder="e.g. AVA" autocomplete="off" spellcheck="false" />
+        <input id="wordInput" class="text-input" type="text" maxlength="10" value="" placeholder="e.g. AVA" autocomplete="off" spellcheck="false" aria-describedby="wordHelp" />
         <p class="help" id="wordHelp">Type a word to form it from small letters (each big letter uses its own lowercase). Leave empty for a single letter.</p>
+
+        <label class="label" for="imageInput">Image</label>
+        <div class="image-upload">
+          <input id="imageInput" class="file-input" type="file" accept="image/*" tabindex="-1" aria-hidden="true" />
+          <div class="image-upload__row">
+            <button type="button" class="btn btn--ghost btn--small" id="btnPickImage" aria-describedby="imageHelp">Upload image</button>
+            <button type="button" class="btn btn--ghost btn--small" id="btnClearImage" hidden>Clear uploaded image</button>
+          </div>
+          <img id="imagePreview" class="image-upload__preview" alt="Uploaded image preview" hidden />
+        </div>
+        <p class="help" id="imageHelp">Form the photo with random small letters. Shape size, weight, softness, and letter scale work the same as text. Image overrides letter/word until cleared.</p>
+        </div>
 
         <div class="slider-row">
           <label class="label" for="wordMerge">Letter merge</label>
@@ -56,17 +71,6 @@
         </div>
         <input id="wordMerge" type="range" min="-20" max="100" step="1" value="45" />
         <p class="help">Positive pulls letters together; negative (−10, −20) widens the gap between them.</p>
-
-        <label class="label" for="imageInput">Image</label>
-        <div class="image-upload">
-          <input id="imageInput" class="file-input" type="file" accept="image/*" />
-          <div class="image-upload__row">
-            <button type="button" class="btn btn--ghost btn--small" id="btnPickImage">Upload image</button>
-            <button type="button" class="btn btn--ghost btn--small" id="btnClearImage" hidden>Clear</button>
-          </div>
-          <img id="imagePreview" class="image-upload__preview" alt="Uploaded image preview" hidden />
-        </div>
-        <p class="help" id="imageHelp">Form the photo with random small letters. Shape size, weight, softness, and letter scale work the same as text. Image overrides letter/word until cleared.</p>
 
         <label class="toggle">
           <input id="imageInvert" type="checkbox" />
@@ -449,14 +453,14 @@
         <button type="button" class="btn btn--ghost" id="btnPause">Pause</button>
         <button type="button" class="btn btn--primary" id="btnSave">Save</button>
         <button type="button" class="btn btn--ghost" id="btnRecord">Record</button>
-        <p class="help panel__save-hint" id="usageStatus" aria-live="polite"></p>
-        <p class="help panel__save-hint" id="saveStatus" aria-live="polite"></p>
+        <p class="help panel__save-hint" id="usageStatus" role="status" aria-live="polite"></p>
+        <p class="help panel__save-hint" id="saveStatus" role="status" aria-live="polite"></p>
       </div>
     </aside>
 
-    <dialog class="embed-dialog" id="embedDialog">
+    <dialog class="embed-dialog" id="embedDialog" aria-labelledby="saveDialogTitle" aria-describedby="saveDialogHelp">
       <form method="dialog" class="embed-dialog__inner">
-        <h2 class="embed-dialog__title">Saved</h2>
+        <h2 class="embed-dialog__title" id="saveDialogTitle">Saved</h2>
         <p class="help" id="saveDialogHelp">Your piece is in the library. Embed and video download are available there.</p>
         <div class="embed-dialog__actions">
           <a class="btn btn--primary" href="library.html" id="btnGoLibrary">Open library</a>
@@ -465,10 +469,10 @@
       </form>
     </dialog>
 
-    <dialog class="auth-dialog" id="planLimitDialog">
+    <dialog class="auth-dialog" id="planLimitDialog" aria-labelledby="planLimitTitle" aria-describedby="planLimitHelp">
       <div class="auth-dialog__inner">
-        <h2 class="auth-dialog__title">Please increase your plan</h2>
-        <p class="help">You’ve used all saves on your current plan. Upgrade to keep saving to your library.</p>
+        <h2 class="auth-dialog__title" id="planLimitTitle">Please increase your plan</h2>
+        <p class="help" id="planLimitHelp">You’ve used all saves on your current plan. Upgrade to keep saving to your library.</p>
         <div class="auth-dialog__actions">
           <a class="btn btn--primary" href="account.html">Increase plan</a>
           <button type="button" class="btn btn--ghost" id="planLimitClose">Close</button>
@@ -476,14 +480,14 @@
       </div>
     </dialog>
 
-    <dialog class="auth-dialog" id="authDialog">
+    <dialog class="auth-dialog" id="authDialog" aria-labelledby="authTitle" aria-describedby="authHelp">
       <div class="auth-dialog__inner">
         <h2 class="auth-dialog__title" id="authTitle">Sign in</h2>
         <p class="help" id="authHelp">Save your work under your Ava account.</p>
 
-        <div class="auth-tabs" role="tablist">
-          <button type="button" class="auth-tab is-active" data-mode="signin" id="tabSignin">Sign in</button>
-          <button type="button" class="auth-tab" data-mode="signup" id="tabSignup">Sign up</button>
+        <div class="auth-tabs" role="tablist" aria-label="Account mode">
+          <button type="button" class="auth-tab is-active" role="tab" data-mode="signin" id="tabSignin" aria-selected="true" aria-controls="authForm" tabindex="0">Sign in</button>
+          <button type="button" class="auth-tab" role="tab" data-mode="signup" id="tabSignup" aria-selected="false" aria-controls="authForm" tabindex="-1">Sign up</button>
         </div>
 
         <form id="authForm" class="auth-form" autocomplete="on">
@@ -493,13 +497,14 @@
           </div>
           <div class="auth-field">
             <label class="label" for="authEmail">Email</label>
-            <input id="authEmail" class="text-input" type="email" name="email" required autocomplete="email" />
+            <input id="authEmail" class="text-input" type="email" name="email" required autocomplete="email" aria-describedby="authError" />
           </div>
           <div class="auth-field">
             <label class="label" for="authPassword">Password</label>
-            <input id="authPassword" class="text-input" type="password" name="password" required minlength="6" autocomplete="current-password" />
+            <input id="authPassword" class="text-input" type="password" name="password" required minlength="6" autocomplete="current-password" aria-describedby="studioPasswordHint authError" />
+            <p class="help" id="studioPasswordHint">At least 6 characters.</p>
           </div>
-          <p class="auth-error" id="authError" hidden></p>
+          <p class="auth-error" id="authError" role="alert" hidden></p>
           <div class="auth-dialog__actions">
             <button type="submit" class="btn btn--primary" id="authSubmit">Sign in</button>
             <button type="button" class="btn btn--ghost" id="authCancel">Close</button>
@@ -509,7 +514,8 @@
     </dialog>
   </div>
 
-  <button type="button" class="panel-toggle" id="btnTogglePanel" aria-label="Toggle controls">Controls</button>
+  <button type="button" class="panel-backdrop" id="panelBackdrop" aria-label="Close controls" tabindex="-1"></button>
+  <button type="button" class="panel-toggle" id="btnTogglePanel" aria-expanded="false" aria-controls="panel">Controls</button>
 
   <script type="module" src="js/main.js"></script>
 </body>

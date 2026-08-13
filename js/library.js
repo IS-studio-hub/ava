@@ -1,4 +1,5 @@
 import { fetchMe, signin, signout, signup } from "./auth.js";
+import { bindTabs, enhanceDialog, showFieldError } from "./a11y.js";
 import { deleteSave, fetchRecordingBlob, listSaves } from "./saves.js";
 import { LetterFieldEngine } from "./engine.js";
 import {
@@ -90,6 +91,7 @@ function renderGrid() {
   for (const save of saves) {
     const card = document.createElement("article");
     card.className = "library-card";
+    card.setAttribute("role", "listitem");
     const label = save.word || save.letter || save.title;
     const bg = save.params?.bgColor || (save.theme === "dark" ? "#000000" : "#ffffff");
     const ink = save.params?.inkColor || (save.theme === "dark" ? "#ffffff" : "#111111");
@@ -141,6 +143,10 @@ function bindAuthDialog() {
     const signupMode = mode === "signup";
     $("#tabSignin")?.classList.toggle("is-active", !signupMode);
     $("#tabSignup")?.classList.toggle("is-active", signupMode);
+    $("#tabSignin")?.setAttribute("aria-selected", signupMode ? "false" : "true");
+    $("#tabSignup")?.setAttribute("aria-selected", signupMode ? "true" : "false");
+    if ($("#tabSignin")) $("#tabSignin").tabIndex = signupMode ? -1 : 0;
+    if ($("#tabSignup")) $("#tabSignup").tabIndex = signupMode ? 0 : -1;
     if (nameField) nameField.hidden = !signupMode;
     if ($("#authTitle")) $("#authTitle").textContent = signupMode ? "Create account" : "Sign in";
     if ($("#authSubmit")) $("#authSubmit").textContent = signupMode ? "Sign up" : "Sign in";
@@ -151,13 +157,20 @@ function bindAuthDialog() {
     }
   }
 
-  $("#tabSignin")?.addEventListener("click", () => setMode("signin"));
-  $("#tabSignup")?.addEventListener("click", () => setMode("signup"));
+  bindTabs($(".auth-tabs"), {
+    onChange(tab) {
+      setMode(tab.getAttribute("data-mode") || "signin");
+    },
+  });
+  enhanceDialog(dialog);
+  enhanceDialog($("#embedDialog"));
+  enhanceDialog($("#videoDialog"));
   $("#authCancel")?.addEventListener("click", () => dialog?.close?.());
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const submit = $("#authSubmit");
+    showFieldError(errorEl, [$("#authEmail"), $("#authPassword")], "");
     if (submit) submit.disabled = true;
     try {
       const payload = {
@@ -169,13 +182,13 @@ function bindAuthDialog() {
         const result = await signup(payload);
         form.reset();
         setMode("signin");
-        if (errorEl) {
-          errorEl.style.color = "#b7d7b0";
-          errorEl.textContent =
-            result.message ||
-            "Check your email and click the verification button to create your account.";
-          errorEl.hidden = false;
-        }
+        showFieldError(
+          errorEl,
+          [$("#authEmail"), $("#authPassword")],
+          result.message ||
+            "Check your email and click the verification button to create your account.",
+          { ok: true }
+        );
       } else {
         currentUser = await signin(payload);
         dialog?.close?.();
@@ -184,11 +197,7 @@ function bindAuthDialog() {
         await refresh();
       }
     } catch (err) {
-      if (errorEl) {
-        errorEl.style.color = "";
-        errorEl.textContent = err.message || "Failed";
-        errorEl.hidden = false;
-      }
+      showFieldError(errorEl, [$("#authEmail"), $("#authPassword")], err.message || "Failed");
     } finally {
       if (submit) submit.disabled = false;
     }

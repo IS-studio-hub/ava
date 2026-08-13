@@ -10,14 +10,15 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body class="library-body">
-  <main class="verify-main">
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <main class="verify-main" id="main">
     <a class="library-brand" href="index.html">
       <span class="stage__logo">Ava</span>
       <span class="stage__tag">Verify</span>
     </a>
     <div class="verify-card" id="verifyCard">
       <h1 id="verifyTitle">Verifying…</h1>
-      <p class="help" id="verifyMessage">Creating your account from the email link.</p>
+      <p class="help" id="verifyMessage" role="status" aria-live="polite">Creating your account from the email link.</p>
       <div class="verify-actions" id="verifyActions" hidden>
         <a class="btn btn--primary" href="studio.html">Open studio</a>
         <a class="btn btn--ghost" href="library.html">Library</a>

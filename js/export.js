@@ -43,7 +43,7 @@ export function buildEmbedCode(saveId, { width = 720, height = 720 } = {}) {
   style="border:0;border-radius:0;max-width:100%;aspect-ratio:1/1;background:#000"
   allow="autoplay"
   loading="lazy"
-  title="Ava Letter Field"
+  title="Ava letter field embed"
 ></iframe>`;
 }
 

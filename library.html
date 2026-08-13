@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body class="library-body">
+  <a class="skip-link" href="#main">Skip to main content</a>
   <header class="library-top">
     <a class="library-brand" href="index.html">
       <span class="stage__logo">Ava</span>
@@ -24,24 +25,25 @@
     </div>
   </header>
 
-  <main class="library-main">
+  <main class="library-main" id="main">
     <div class="library-intro">
       <h1>Your library</h1>
       <p class="help">Saved pieces live here. Embed and video download only work for items still in this library — delete one and every embed of it stops.</p>
     </div>
 
-    <p class="library-status" id="libraryStatus" aria-live="polite"></p>
-    <div class="library-grid" id="libraryGrid"></div>
+    <p class="library-status" id="libraryStatus" role="status" aria-live="polite"></p>
+    <div class="library-grid" id="libraryGrid" role="list" aria-label="Saved pieces"></div>
     <p class="library-empty" id="libraryEmpty" hidden>No saves yet. Open Studio, sign in, and press Save or Record.</p>
   </main>
 
   <!-- Offscreen canvas for video export -->
-  <canvas id="exportCanvas" width="1080" height="1080" hidden></canvas>
+  <canvas id="exportCanvas" width="1080" height="1080" hidden aria-hidden="true"></canvas>
 
-  <dialog class="embed-dialog" id="embedDialog">
+  <dialog class="embed-dialog" id="embedDialog" aria-labelledby="embedDialogTitle">
     <form method="dialog" class="embed-dialog__inner">
-      <h2 class="embed-dialog__title">Embed code</h2>
+      <h2 class="embed-dialog__title" id="embedDialogTitle">Embed code</h2>
       <p class="help">This iframe stays live only while this save exists in your library.</p>
+      <label class="label" for="embedCode">Embed iframe code</label>
       <textarea id="embedCode" class="embed-dialog__code" rows="8" readonly></textarea>
       <div class="embed-dialog__actions">
         <button type="button" class="btn btn--primary" id="btnCopyEmbed">Copy</button>
@@ -50,9 +52,9 @@
     </form>
   </dialog>
 
-  <dialog class="embed-dialog" id="videoDialog">
+  <dialog class="embed-dialog" id="videoDialog" aria-labelledby="videoDialogTitle" aria-describedby="exportStatus">
     <div class="embed-dialog__inner">
-      <h2 class="embed-dialog__title">Download video</h2>
+      <h2 class="embed-dialog__title" id="videoDialogTitle">Download video</h2>
       <label class="label" for="exportResolution">Resolution</label>
       <select id="exportResolution" class="select">
         <option value="4k">4K — 2160×2160 (MP4)</option>
@@ -68,7 +70,7 @@
         </div>
         <input id="exportDuration" type="range" min="3" max="15" step="1" value="6" />
       </div>
-      <p class="help" id="exportStatus" aria-live="polite"></p>
+      <p class="help" id="exportStatus" role="status" aria-live="polite"></p>
       <div class="embed-dialog__actions">
         <button type="button" class="btn btn--primary" id="btnStartVideo">Download</button>
         <button type="button" class="btn btn--ghost" id="btnCloseVideo">Close</button>
@@ -76,13 +78,13 @@
     </div>
   </dialog>
 
-  <dialog class="auth-dialog" id="authDialog">
+  <dialog class="auth-dialog" id="authDialog" aria-labelledby="authTitle" aria-describedby="authHelp">
     <div class="auth-dialog__inner">
       <h2 class="auth-dialog__title" id="authTitle">Sign in</h2>
-      <p class="help">Sign in to view and manage your library.</p>
-      <div class="auth-tabs" role="tablist">
-        <button type="button" class="auth-tab is-active" data-mode="signin" id="tabSignin">Sign in</button>
-        <button type="button" class="auth-tab" data-mode="signup" id="tabSignup">Sign up</button>
+      <p class="help" id="authHelp">Sign in to view and manage your library.</p>
+      <div class="auth-tabs" role="tablist" aria-label="Account mode">
+        <button type="button" class="auth-tab is-active" role="tab" data-mode="signin" id="tabSignin" aria-selected="true" aria-controls="authForm" tabindex="0">Sign in</button>
+        <button type="button" class="auth-tab" role="tab" data-mode="signup" id="tabSignup" aria-selected="false" aria-controls="authForm" tabindex="-1">Sign up</button>
       </div>
       <form id="authForm" class="auth-form" autocomplete="on">
         <div class="auth-field" id="authNameField" hidden>
@@ -91,13 +93,14 @@
         </div>
         <div class="auth-field">
           <label class="label" for="authEmail">Email</label>
-          <input id="authEmail" class="text-input" type="email" name="email" required autocomplete="email" />
+          <input id="authEmail" class="text-input" type="email" name="email" required autocomplete="email" aria-describedby="authError" />
         </div>
         <div class="auth-field">
           <label class="label" for="authPassword">Password</label>
-          <input id="authPassword" class="text-input" type="password" name="password" required minlength="6" autocomplete="current-password" />
+          <input id="authPassword" class="text-input" type="password" name="password" required minlength="6" autocomplete="current-password" aria-describedby="libraryPasswordHint authError" />
+          <p class="help" id="libraryPasswordHint">At least 6 characters.</p>
         </div>
-        <p class="auth-error" id="authError" hidden></p>
+        <p class="auth-error" id="authError" role="alert" hidden></p>
         <div class="auth-dialog__actions">
           <button type="submit" class="btn btn--primary" id="authSubmit">Sign in</button>
           <button type="button" class="btn btn--ghost" id="authCancel">Close</button>

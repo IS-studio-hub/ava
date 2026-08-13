@@ -11,12 +11,14 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body class="home-body">
-  <header class="home-nav">
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="home-nav" id="homeNav">
     <a class="library-brand" href="index.html">
       <span class="stage__logo">Ava</span>
       <span class="stage__tag">Letter Field</span>
     </a>
-    <nav class="home-nav__links" aria-label="Primary">
+    <button type="button" class="nav-toggle" id="btnHomeMenu" aria-expanded="false" aria-controls="homeNavLinks">Menu</button>
+    <nav class="home-nav__links" id="homeNavLinks" aria-label="Primary">
       <a href="#how">How it works</a>
       <a href="#plans">Plans</a>
       <a href="studio.html">Studio</a>
@@ -29,7 +31,7 @@
     </div>
   </header>
 
-  <main>
+  <main id="main">
     <section class="home-hero">
       <div class="home-hero__copy">
         <p class="home-kicker">Kinetic typography studio</p>
@@ -45,8 +47,8 @@
         <p class="help home-hero__note">Verify by email. Save to your library. Embeds stop if you delete a save.</p>
       </div>
       <div class="home-hero__stage">
-        <canvas id="homeField" width="720" height="720" aria-label="Ava letter field preview"></canvas>
-        <p class="help home-hero__hint">Move your pointer over the field</p>
+        <canvas id="homeField" width="720" height="720" tabindex="0" aria-label="Ava letter field preview. Arrow keys move the pointer."></canvas>
+        <p class="help home-hero__hint">Move your pointer or use arrow keys on the field</p>
       </div>
     </section>
 
@@ -175,13 +177,13 @@
     </div>
   </footer>
 
-  <dialog class="auth-dialog" id="authDialog">
+  <dialog class="auth-dialog" id="authDialog" aria-labelledby="authTitle" aria-describedby="authHelp">
     <div class="auth-dialog__inner">
       <h2 class="auth-dialog__title" id="authTitle">Sign in</h2>
       <p class="help" id="authHelp">Sign in to your Ava account.</p>
-      <div class="auth-tabs" role="tablist">
-        <button type="button" class="auth-tab is-active" data-mode="signin" id="tabSignin">Sign in</button>
-        <button type="button" class="auth-tab" data-mode="signup" id="tabSignup">Sign up</button>
+      <div class="auth-tabs" role="tablist" aria-label="Account mode">
+        <button type="button" class="auth-tab is-active" role="tab" data-mode="signin" id="tabSignin" aria-selected="true" aria-controls="authForm" tabindex="0">Sign in</button>
+        <button type="button" class="auth-tab" role="tab" data-mode="signup" id="tabSignup" aria-selected="false" aria-controls="authForm" tabindex="-1">Sign up</button>
       </div>
       <form id="authForm" class="auth-form" autocomplete="on">
         <div class="auth-field" id="authNameField" hidden>
@@ -190,13 +192,14 @@
         </div>
         <div class="auth-field">
           <label class="label" for="authEmail">Email</label>
-          <input id="authEmail" class="text-input" type="email" name="email" required autocomplete="email" />
+          <input id="authEmail" class="text-input" type="email" name="email" required autocomplete="email" aria-describedby="authError" />
         </div>
         <div class="auth-field">
           <label class="label" for="authPassword">Password</label>
-          <input id="authPassword" class="text-input" type="password" name="password" required minlength="6" autocomplete="current-password" />
+          <input id="authPassword" class="text-input" type="password" name="password" required minlength="6" autocomplete="current-password" aria-describedby="passwordHint authError" />
+          <p class="help" id="passwordHint">At least 6 characters.</p>
         </div>
-        <p class="auth-error" id="authError" hidden></p>
+        <p class="auth-error" id="authError" role="alert" hidden></p>
         <div class="auth-dialog__actions">
           <button type="submit" class="btn btn--primary" id="authSubmit">Sign in</button>
           <button type="button" class="btn btn--ghost" id="authCancel">Close</button>

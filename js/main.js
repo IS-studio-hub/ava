@@ -5,6 +5,13 @@ import { usageLabel } from "./usage.js";
 import { bindPlanLimitDialog, showPlanLimitDialog } from "./planLimit.js";
 import { MAX_RECORD_MS, startCanvasRecording } from "./export.js";
 import {
+  bindCanvasKeyboard,
+  bindTabs,
+  describeArtboard,
+  enhanceDialog,
+  showFieldError,
+} from "./a11y.js";
+import {
   alphabetFor,
   detectScript,
   normalizeLetter,
@@ -160,13 +167,20 @@ function isResultMode() {
 }
 
 function formatValue(id, value) {
+  const text =
+    Number.isInteger(value) || Math.abs(value - Math.round(value)) < 1e-6
+      ? String(Math.round(value))
+      : value.toFixed(2);
+  const slider = document.getElementById(id);
+  if (slider) slider.setAttribute("aria-valuetext", text);
   const out = document.querySelector(`.value[data-for="${id}"]`);
   if (!out || out.querySelector("input")) return;
-  if (Number.isInteger(value) || Math.abs(value - Math.round(value)) < 1e-6) {
-    out.textContent = String(Math.round(value));
-  } else {
-    out.textContent = value.toFixed(2);
-  }
+  out.textContent = text;
+  const label = document.querySelector(`label[for="${id}"]`);
+  out.setAttribute(
+    "aria-label",
+    `Edit ${label ? label.textContent.trim() : id}, currently ${text}`
+  );
 }
 
 function snapToStep(value, min, step) {
@@ -243,7 +257,7 @@ function bindEditableValues(engine) {
   document.querySelectorAll(".value[data-for]").forEach((span) => {
     span.tabIndex = 0;
     span.setAttribute("role", "button");
-    span.setAttribute("title", "Click to type a value");
+    span.setAttribute("title", "Press Enter to type a value");
     span.addEventListener("click", () => beginEditValue(span, engine));
     span.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -313,8 +327,19 @@ function bindStudio(engine) {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   }
 
+  function updateArtboardLabel() {
+    const canvas = $("#field");
+    if (!canvas) return;
+    canvas.setAttribute(
+      "aria-label",
+      `${describeArtboard(engine.params)}. Arrow keys move the pointer for spin, ripple, and bubble.`
+    );
+  }
+
   function lockShapeSource(locked) {
     document.body.classList.toggle("is-recording-art", locked);
+    const source = $("#shapeSource");
+    if (source) source.inert = locked;
     if (letterInput) {
       letterInput.readOnly = locked;
       letterInput.classList.toggle("is-locked", locked);
@@ -355,10 +380,12 @@ function bindStudio(engine) {
     if (btn) {
       btn.textContent = recording ? `Stop · ${formatRecordClock(ms)}` : "Record";
       btn.classList.toggle("is-recording", recording);
+      btn.setAttribute("aria-pressed", recording ? "true" : "false");
+      btn.setAttribute("aria-label", recording ? `Stop recording, ${formatRecordClock(ms)} elapsed` : "Record artboard");
     }
     if (rec) {
       rec.hidden = !recording;
-      rec.textContent = recording ? `REC ${formatRecordClock(ms)}` : "REC";
+      rec.textContent = recording ? `Recording ${formatRecordClock(ms)}` : "Recording";
     }
   }
 
@@ -382,13 +409,19 @@ function bindStudio(engine) {
     const hebrew = script === "hebrew";
     $("#scriptLatin")?.classList.toggle("is-active", !hebrew);
     $("#scriptHebrew")?.classList.toggle("is-active", hebrew);
+    $("#scriptLatin")?.setAttribute("aria-selected", hebrew ? "false" : "true");
+    $("#scriptHebrew")?.setAttribute("aria-selected", hebrew ? "true" : "false");
+    if ($("#scriptLatin")) $("#scriptLatin").tabIndex = hebrew ? -1 : 0;
+    if ($("#scriptHebrew")) $("#scriptHebrew").tabIndex = hebrew ? 0 : -1;
     if (presets) presets.dataset.script = script;
     if (letterInput) {
       letterInput.dir = hebrew ? "rtl" : "ltr";
+      letterInput.lang = hebrew ? "he" : "en";
       letterInput.classList.toggle("text-input--hebrew", hebrew);
     }
     if (wordInput) {
       wordInput.dir = hebrew ? "rtl" : "ltr";
+      wordInput.lang = hebrew ? "he" : "en";
       wordInput.placeholder = hebrew ? "למשל שלום" : "e.g. AVA";
     }
     if (wordHelp) {
@@ -405,6 +438,8 @@ function bindStudio(engine) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = ch;
+      btn.setAttribute("role", "option");
+      btn.setAttribute("aria-label", `Letter ${ch}`);
       btn.addEventListener("click", () => {
         if (ch === letterInput.value && !wordInput.value && !engine.params.imageSrc) return;
         letterInput.value = ch;
@@ -441,8 +476,11 @@ function bindStudio(engine) {
     const usingWord = Boolean(normalizeWord(wordInput.value || "", script));
     const usingImage = Boolean(engine.params.imageSrc);
     presets.querySelectorAll("button").forEach((b) => {
-      b.classList.toggle("is-active", !usingWord && !usingImage && b.textContent === current);
+      const on = !usingWord && !usingImage && b.textContent === current;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
     });
+    updateArtboardLabel();
   }
 
   function syncImagePreview(src) {
@@ -476,8 +514,11 @@ function bindStudio(engine) {
     if (label) label.textContent = raw || engine.params.letter;
   }
 
-  $("#scriptLatin")?.addEventListener("click", () => setScript("latin"));
-  $("#scriptHebrew")?.addEventListener("click", () => setScript("hebrew"));
+  bindTabs($("#scriptToggle"), {
+    onChange(tab) {
+      setScript(tab.id === "scriptHebrew" ? "hebrew" : "latin");
+    },
+  });
 
   letterInput.addEventListener("input", () => {
     if (recording) {
@@ -800,12 +841,36 @@ function bindStudio(engine) {
     }
   });
 
+  function setPanelOpen(open) {
+    document.body.classList.toggle("panel-open", open);
+    const toggle = $("#btnTogglePanel");
+    const backdrop = $("#panelBackdrop");
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      toggle.textContent = open ? "Close controls" : "Controls";
+    }
+    if (backdrop) backdrop.tabIndex = open ? 0 : -1;
+    if (open) $("#letterInput")?.focus();
+    else toggle?.focus();
+  }
+
   $("#btnTogglePanel")?.addEventListener("click", () => {
-    document.body.classList.toggle("panel-open");
+    setPanelOpen(!document.body.classList.contains("panel-open"));
+  });
+  $("#panelBackdrop")?.addEventListener("click", () => setPanelOpen(false));
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !document.body.classList.contains("panel-open")) return;
+    if (document.querySelector("dialog[open]")) return;
+    setPanelOpen(false);
   });
 
   bindPlanLimitDialog();
+  enhanceDialog($("#authDialog"));
+  enhanceDialog($("#embedDialog"));
+  enhanceDialog($("#planLimitDialog"));
+  bindCanvasKeyboard($("#field"), engine);
   bindPointer(engine);
+  updateArtboardLabel();
   Promise.resolve(loadSaveFromQuery(engine)).finally(() => {
     fetchMe().then((user) => {
       if (user) renderUsage(user, { prompt: Number(user.usesRemaining) === 0 });
@@ -932,6 +997,7 @@ async function main() {
     if (!window.location.search || window.location.search.length <= 1) {
       history.replaceState(null, "", `result.html?${engine.toQuery()}`);
     }
+    bindCanvasKeyboard(canvas, engine);
     bindPointer(engine);
   } else {
     bindStudio(engine);
@@ -961,6 +1027,10 @@ function bindAuth() {
     const signup = mode === "signup";
     $("#tabSignin")?.classList.toggle("is-active", !signup);
     $("#tabSignup")?.classList.toggle("is-active", signup);
+    $("#tabSignin")?.setAttribute("aria-selected", signup ? "false" : "true");
+    $("#tabSignup")?.setAttribute("aria-selected", signup ? "true" : "false");
+    if ($("#tabSignin")) $("#tabSignin").tabIndex = signup ? -1 : 0;
+    if ($("#tabSignup")) $("#tabSignup").tabIndex = signup ? 0 : -1;
     if (nameField) nameField.hidden = !signup;
     if (titleEl) titleEl.textContent = signup ? "Create account" : "Sign in";
     if (helpEl) {
@@ -1007,16 +1077,16 @@ function bindAuth() {
     }
   }
 
-  $("#tabSignin")?.addEventListener("click", () => setMode("signin"));
-  $("#tabSignup")?.addEventListener("click", () => setMode("signup"));
+  bindTabs($(".auth-tabs"), {
+    onChange(tab) {
+      setMode(tab.getAttribute("data-mode") || "signin");
+    },
+  });
   $("#authCancel")?.addEventListener("click", () => dialog?.close?.());
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (errorEl) {
-      errorEl.hidden = true;
-      errorEl.textContent = "";
-    }
+    showFieldError(errorEl, [emailInput, passwordInput], "");
     if (submitBtn) submitBtn.disabled = true;
     try {
       const payload = {
@@ -1028,13 +1098,13 @@ function bindAuth() {
         const result = await signup(payload);
         form.reset();
         setMode("signin");
-        if (errorEl) {
-          errorEl.style.color = "#b7d7b0";
-          errorEl.textContent =
-            result.message ||
-            "Check your email and click the verification button to create your account.";
-          errorEl.hidden = false;
-        }
+        showFieldError(
+          errorEl,
+          [emailInput, passwordInput],
+          result.message ||
+            "Check your email and click the verification button to create your account.",
+          { ok: true }
+        );
       } else {
         currentUser = await signin(payload);
         dialog?.close?.();
@@ -1042,11 +1112,7 @@ function bindAuth() {
         renderBar();
       }
     } catch (err) {
-      if (errorEl) {
-        errorEl.style.color = "";
-        errorEl.textContent = err.message || "Something went wrong";
-        errorEl.hidden = false;
-      }
+      showFieldError(errorEl, [emailInput, passwordInput], err.message || "Something went wrong");
     } finally {
       if (submitBtn) submitBtn.disabled = false;
     }

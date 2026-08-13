@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body class="library-body">
+  <a class="skip-link" href="#main">Skip to main content</a>
   <header class="library-top">
     <a class="library-brand" href="index.html">
       <span class="stage__logo">Ava</span>
@@ -23,12 +24,12 @@
     </div>
   </header>
 
-  <main class="library-main account-main">
+  <main class="library-main account-main" id="main">
     <div class="library-intro">
       <h1>Account</h1>
       <p class="help" id="accountLead">Your profile, plan, uses, and password.</p>
     </div>
-    <p class="library-status" id="accountStatus" aria-live="polite"></p>
+    <p class="library-status" id="accountStatus" role="status" aria-live="polite"></p>
 
     <section class="account-gate" id="accountGate">
       <p>Sign in to view your account.</p>
@@ -44,7 +45,8 @@
           </div>
           <div class="auth-field">
             <label class="label" for="accountEmail">Email</label>
-            <input id="accountEmail" class="text-input" type="email" readonly />
+            <input id="accountEmail" class="text-input" type="email" readonly aria-readonly="true" aria-describedby="accountEmailHelp" />
+          <p class="help" id="accountEmailHelp">Email cannot be changed.</p>
           </div>
           <p class="help" id="accountSince"></p>
           <div class="account-card__actions">
@@ -107,7 +109,8 @@
           </div>
           <div class="auth-field">
             <label class="label" for="newPassword">New password</label>
-            <input id="newPassword" class="text-input" type="password" name="password" minlength="6" autocomplete="new-password" required />
+            <input id="newPassword" class="text-input" type="password" name="password" minlength="6" autocomplete="new-password" required aria-describedby="newPasswordHint" />
+            <p class="help" id="newPasswordHint">At least 6 characters.</p>
           </div>
           <div class="account-card__actions">
             <button type="submit" class="btn btn--primary" id="btnSavePassword">Update password</button>
@@ -125,23 +128,23 @@
     </div>
   </main>
 
-  <dialog class="auth-dialog" id="planLimitDialog">
+  <dialog class="auth-dialog" id="planLimitDialog" aria-labelledby="planLimitTitle" aria-describedby="planLimitHelp">
     <div class="auth-dialog__inner">
-      <h2 class="auth-dialog__title">Please increase your plan</h2>
-      <p class="help">You’ve used all saves on your current plan. Upgrade below to keep saving to your library.</p>
+      <h2 class="auth-dialog__title" id="planLimitTitle">Please increase your plan</h2>
+      <p class="help" id="planLimitHelp">You’ve used all saves on your current plan. Upgrade below to keep saving to your library.</p>
       <div class="auth-dialog__actions">
         <button type="button" class="btn btn--primary" id="planLimitClose">See plans</button>
       </div>
     </div>
   </dialog>
 
-  <dialog class="auth-dialog" id="authDialog">
+  <dialog class="auth-dialog" id="authDialog" aria-labelledby="authTitle" aria-describedby="authHelp">
     <div class="auth-dialog__inner">
       <h2 class="auth-dialog__title" id="authTitle">Sign in</h2>
       <p class="help" id="authHelp">Sign in to your Ava account.</p>
-      <div class="auth-tabs" role="tablist">
-        <button type="button" class="auth-tab is-active" data-mode="signin" id="tabSignin">Sign in</button>
-        <button type="button" class="auth-tab" data-mode="signup" id="tabSignup">Sign up</button>
+      <div class="auth-tabs" role="tablist" aria-label="Account mode">
+        <button type="button" class="auth-tab is-active" role="tab" data-mode="signin" id="tabSignin" aria-selected="true" aria-controls="authForm" tabindex="0">Sign in</button>
+        <button type="button" class="auth-tab" role="tab" data-mode="signup" id="tabSignup" aria-selected="false" aria-controls="authForm" tabindex="-1">Sign up</button>
       </div>
       <form id="authForm" class="auth-form" autocomplete="on">
         <div class="auth-field" id="authNameField" hidden>
@@ -150,13 +153,14 @@
         </div>
         <div class="auth-field">
           <label class="label" for="authEmail">Email</label>
-          <input id="authEmail" class="text-input" type="email" name="email" required autocomplete="email" />
+          <input id="authEmail" class="text-input" type="email" name="email" required autocomplete="email" aria-describedby="authError" />
         </div>
         <div class="auth-field">
           <label class="label" for="authPassword">Password</label>
-          <input id="authPassword" class="text-input" type="password" name="password" required minlength="6" autocomplete="current-password" />
+          <input id="authPassword" class="text-input" type="password" name="password" required minlength="6" autocomplete="current-password" aria-describedby="accountPasswordHint authError" />
+          <p class="help" id="accountPasswordHint">At least 6 characters.</p>
         </div>
-        <p class="auth-error" id="authError" hidden></p>
+        <p class="auth-error" id="authError" role="alert" hidden></p>
         <div class="auth-dialog__actions">
           <button type="submit" class="btn btn--primary" id="authSubmit">Sign in</button>
           <button type="button" class="btn btn--ghost" id="authCancel">Close</button>

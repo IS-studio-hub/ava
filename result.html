@@ -10,9 +10,10 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body class="result-body">
+  <a class="skip-link" href="#field">Skip to artboard</a>
   <div id="app" data-mode="result">
-    <canvas id="field" width="1080" height="1080" aria-label="Letter field result"></canvas>
-    <a class="result-back" href="studio.html">← Studio</a>
+    <canvas id="field" width="1080" height="1080" tabindex="0" aria-label="Letter field result. Arrow keys move the pointer."></canvas>
+    <a class="result-back" href="studio.html">Back to studio</a>
     <div class="result-letter" id="resultLetter" aria-hidden="true"></div>
   </div>
   <script type="module" src="js/main.js"></script>
