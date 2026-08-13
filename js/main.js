@@ -1,7 +1,7 @@
 import { LetterFieldEngine } from "./engine.js";
 import { fetchMe, signin, signout, signup } from "./auth.js";
 import { createSave, getSave } from "./saves.js";
-import { consumeUsage, usageLabel } from "./usage.js";
+import { usageLabel } from "./usage.js";
 import { bindPlanLimitDialog, showPlanLimitDialog } from "./planLimit.js";
 import {
   alphabetFor,
@@ -282,56 +282,18 @@ function bindStudio(engine) {
   const imagePreview = $("#imagePreview");
   const btnPickImage = $("#btnPickImage");
   const btnClearImage = $("#btnClearImage");
-  const imageHelp = $("#imageHelp");
-  let ignoreUsage = true;
-  let lastLetter = "";
-  let lastWord = "";
   let usageUser = null;
 
   function planExhausted() {
     return Boolean(usageUser && Number(usageUser.usesRemaining) === 0);
   }
 
-  function lockImageUpload() {
+  function lockSaveButton() {
+    const btn = $("#btnSave");
+    if (!btn) return;
     const locked = planExhausted();
-    if (btnPickImage) {
-      btnPickImage.disabled = locked;
-      btnPickImage.classList.toggle("is-locked", locked);
-      btnPickImage.setAttribute("aria-disabled", locked ? "true" : "false");
-      btnPickImage.textContent = locked ? "Upload locked" : "Upload image";
-    }
-    if (imageInput) imageInput.disabled = locked;
-    if (imageHelp) {
-      imageHelp.textContent = locked
-        ? "Image upload is locked. Please increase your plan to keep creating."
-        : "Form the photo with random small letters. Shape size, weight, softness, and letter scale work the same as text. Image overrides letter/word until cleared.";
-    }
-  }
-
-  function lockWordField() {
-    if (!wordInput) return;
-    const locked = planExhausted();
-    wordInput.readOnly = locked;
-    wordInput.classList.toggle("is-locked", locked);
-    wordInput.setAttribute("aria-disabled", locked ? "true" : "false");
-    if (locked) {
-      wordInput.placeholder = "Increase your plan to type a word";
-      if (wordHelp) wordHelp.textContent = "Word is locked. Please increase your plan to keep creating.";
-    } else if (wordHelp) {
-      const hebrew = currentScript() === "hebrew";
-      wordInput.placeholder = hebrew ? "למשל שלום" : "e.g. AVA";
-      wordHelp.textContent = hebrew
-        ? "Type a Hebrew word. Each big letter is built from that same letter. Leave empty for a single letter."
-        : "Type a word to form it from small letters (each big letter uses its own lowercase). Leave empty for a single letter.";
-    }
-  }
-
-  function guardLockedWord(e) {
-    if (!planExhausted()) return false;
-    e?.preventDefault?.();
-    wordInput?.blur?.();
-    showPlanLimitDialog();
-    return true;
+    btn.classList.toggle("is-locked", locked);
+    btn.setAttribute("aria-disabled", locked ? "true" : "false");
   }
 
   function renderUsage(user, { prompt = false } = {}) {
@@ -342,32 +304,8 @@ function bindStudio(engine) {
         ? `${usageLabel(usageUser)}${usageUser.usesRemaining === 0 ? " · please increase your plan" : ""}`
         : "";
     }
-    lockWordField();
-    lockImageUpload();
+    lockSaveButton();
     if (prompt && planExhausted()) showPlanLimitDialog();
-  }
-
-  async function consumeStudioUse(kind) {
-    if (ignoreUsage) return true;
-    const user = usageUser || (await fetchMe());
-    if (!user) return true;
-    if (Number(user.usesRemaining) === 0) {
-      renderUsage(user, { prompt: true });
-      return false;
-    }
-    try {
-      const data = await consumeUsage(kind);
-      renderUsage(data.user || data.usage);
-      return true;
-    } catch (err) {
-      const status = $("#usageStatus") || $("#saveStatus");
-      if (status) {
-        status.textContent = err.message || "Please increase your plan.";
-      }
-      if (err.data?.user) renderUsage(err.data.user, { prompt: true });
-      else if (err.status === 402) showPlanLimitDialog();
-      return false;
-    }
   }
 
   function currentScript() {
@@ -385,8 +323,13 @@ function bindStudio(engine) {
     }
     if (wordInput) {
       wordInput.dir = hebrew ? "rtl" : "ltr";
+      wordInput.placeholder = hebrew ? "למשל שלום" : "e.g. AVA";
     }
-    lockWordField();
+    if (wordHelp) {
+      wordHelp.textContent = hebrew
+        ? "Type a Hebrew word. Each big letter is built from that same letter. Leave empty for a single letter."
+        : "Type a word to form it from small letters (each big letter uses its own lowercase). Leave empty for a single letter.";
+    }
   }
 
   function renderPresets() {
@@ -396,18 +339,12 @@ function bindStudio(engine) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = ch;
-      btn.addEventListener("click", async () => {
-        if (ch === lastLetter && !wordInput.value && !engine.params.imageSrc) return;
-        const ok = await consumeStudioUse("letter");
-        if (!ok) return;
+      btn.addEventListener("click", () => {
+        if (ch === letterInput.value && !wordInput.value && !engine.params.imageSrc) return;
         letterInput.value = ch;
         wordInput.value = "";
-        lastLetter = ch;
-        lastWord = "";
-        ignoreUsage = true;
         syncLetter();
         syncWord();
-        ignoreUsage = false;
       });
       presets.appendChild(btn);
     });
@@ -425,14 +362,10 @@ function bindStudio(engine) {
     engine.setParams(patch);
     letterInput.value = engine.params.letter;
     wordInput.value = engine.params.word || "";
-    lastLetter = letterInput.value;
-    lastWord = wordInput.value || "";
     applyScriptUI(script);
     renderPresets();
-    ignoreUsage = true;
     syncLetter();
     syncWord();
-    ignoreUsage = false;
   }
 
   function markPreset() {
@@ -479,82 +412,23 @@ function bindStudio(engine) {
   $("#scriptLatin")?.addEventListener("click", () => setScript("latin"));
   $("#scriptHebrew")?.addEventListener("click", () => setScript("hebrew"));
 
-  letterInput.addEventListener("input", async () => {
-    const script = currentScript();
-    const next = normalizeLetter(letterInput.value || defaultLetter(script), script);
-    syncLetter();
-    if (ignoreUsage || next === lastLetter) return;
-    const ok = await consumeStudioUse("letter");
-    if (ok) lastLetter = next;
-  });
+  letterInput.addEventListener("input", () => syncLetter());
   letterInput.addEventListener("focus", () => letterInput.select());
 
-  async function commitWordUse() {
-    if (planExhausted()) return;
-    const next = normalizeWord(wordInput.value || "", currentScript());
-    if (ignoreUsage || next === lastWord) return;
-    if (!next) {
-      lastWord = "";
-      return;
-    }
-    const ok = await consumeStudioUse("word");
-    if (ok) lastWord = next;
-  }
-
-  wordInput.addEventListener("pointerdown", (e) => {
-    if (planExhausted()) {
-      e.preventDefault();
-      showPlanLimitDialog();
-    }
-  });
-  wordInput.addEventListener("input", () => {
-    if (guardLockedWord()) {
-      wordInput.value = lastWord;
-      ignoreUsage = true;
-      syncWord();
-      ignoreUsage = false;
-      return;
-    }
-    syncWord();
-  });
-  wordInput.addEventListener("blur", () => {
-    commitWordUse();
-  });
+  wordInput.addEventListener("input", () => syncWord());
   wordInput.addEventListener("keydown", (e) => {
-    if (planExhausted()) {
-      e.preventDefault();
-      showPlanLimitDialog();
-      return;
-    }
     if (e.key === "Enter") {
       e.preventDefault();
       wordInput.blur();
     }
   });
-  wordInput.addEventListener("focus", (e) => {
-    if (guardLockedWord(e)) return;
-    wordInput.select();
-  });
+  wordInput.addEventListener("focus", () => wordInput.select());
 
-  btnPickImage?.addEventListener("click", (e) => {
-    if (planExhausted()) {
-      e.preventDefault();
-      showPlanLimitDialog();
-      return;
-    }
-    imageInput?.click();
-  });
+  btnPickImage?.addEventListener("click", () => imageInput?.click());
   imageInput?.addEventListener("change", async () => {
     const file = imageInput.files?.[0];
     if (!file) return;
-    if (planExhausted()) {
-      imageInput.value = "";
-      showPlanLimitDialog();
-      return;
-    }
     try {
-      const ok = await consumeStudioUse("image");
-      if (!ok) return;
       const src = await compressImageFile(file);
       engine.setParams({ imageSrc: src });
       syncImagePreview(src);
@@ -650,7 +524,6 @@ function bindStudio(engine) {
   });
 
   $("#btnReset").addEventListener("click", () => {
-    ignoreUsage = true;
     setScript(defaults.script || "latin");
     Object.entries(defaults).forEach(([key, value]) => {
       if (key === "particle" || key === "script") return;
@@ -673,9 +546,6 @@ function bindStudio(engine) {
     syncImagePreview("");
     syncLetter();
     syncWord();
-    lastLetter = letterInput.value;
-    lastWord = wordInput.value || "";
-    ignoreUsage = false;
   });
 
   $("#btnPause").addEventListener("click", () => {
@@ -695,10 +565,18 @@ function bindStudio(engine) {
       return;
     }
 
+    if (planExhausted()) {
+      showPlanLimitDialog();
+      if (status) status.textContent = "Please increase your plan to save.";
+      return;
+    }
+
     if (btn) btn.disabled = true;
     if (status) status.textContent = "Saving…";
     try {
-      const save = await createSave(engine.params);
+      const data = await createSave(engine.params);
+      const save = data.save || data;
+      if (data.user) renderUsage(data.user);
       if (status) status.textContent = `Saved “${save.title}”.`;
       const help = $("#saveDialogHelp");
       if (help) {
@@ -706,9 +584,12 @@ function bindStudio(engine) {
       }
       $("#embedDialog")?.showModal?.();
     } catch (err) {
+      if (err.data?.user) renderUsage(err.data.user, { prompt: err.status === 402 });
+      else if (err.status === 402) showPlanLimitDialog();
       if (status) status.textContent = err.message || "Could not save.";
     } finally {
       if (btn) btn.disabled = false;
+      lockSaveButton();
     }
   });
 
@@ -719,9 +600,6 @@ function bindStudio(engine) {
   bindPlanLimitDialog();
   bindPointer(engine);
   Promise.resolve(loadSaveFromQuery(engine)).finally(() => {
-    lastLetter = letterInput.value;
-    lastWord = wordInput.value || "";
-    ignoreUsage = false;
     fetchMe().then((user) => {
       if (user) renderUsage(user, { prompt: Number(user.usesRemaining) === 0 });
     });

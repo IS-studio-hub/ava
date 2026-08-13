@@ -40,7 +40,7 @@ export function usageLabel(user) {
   const limit = Number(user.useLimit) || 0;
   const plan = user.plan === "pro" ? "Pro" : user.plan === "business" ? "Business" : "Free";
   if (plan === "Free" || user.usesReset === "lifetime") {
-    return `${plan} · ${used} / ${limit} uses`;
+    return `${plan} · ${used} / ${limit} saves`;
   }
-  return `${plan} · ${used} / ${limit} uses this month`;
+  return `${plan} · ${used} / ${limit} saves this month`;
 }

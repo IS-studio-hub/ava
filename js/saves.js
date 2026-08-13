@@ -45,7 +45,7 @@ export async function createSave(params, title) {
     method: "POST",
     body: { params, title },
   });
-  return data.save;
+  return data;
 }
 
 export async function deleteSave(id) {

@@ -117,8 +117,8 @@ function renderUser() {
   if ($("#accountPlanHelp")) {
     $("#accountPlanHelp").textContent =
       plan === "free"
-        ? `You're on Free (${status}). 5 letter / word / image uses, one time.`
-        : `You're on ${planLabel(plan)} (${status}). Letter, word, and image uses reset each month.`;
+        ? `You're on Free (${status}). 5 saves, one time.`
+        : `You're on ${planLabel(plan)} (${status}). Saves reset each month.`;
   }
   document.querySelectorAll("[data-account-plan]").forEach((card) => {
     const id = card.getAttribute("data-account-plan");

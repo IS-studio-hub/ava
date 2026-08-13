@@ -2,6 +2,7 @@ import { Router } from "express";
 import { ObjectId } from "mongodb";
 import { getDb } from "./db.js";
 import { requireAuth } from "./auth.js";
+import { consumeUserUse } from "./usage.js";
 
 const router = Router();
 
@@ -101,6 +102,19 @@ router.post("/", requireAuth, async (req, res) => {
     if (!params || typeof params !== "object") {
       return res.status(400).json({ error: "params are required" });
     }
+    let usageResult;
+    try {
+      usageResult = await consumeUserUse(req.user.id, "save");
+    } catch (err) {
+      if (err.status === 402 || err.status === 404) {
+        return res.status(err.status).json({
+          error: err.message,
+          usage: err.usage,
+          user: err.user,
+        });
+      }
+      throw err;
+    }
     const title = titleFromParams(params, req.body?.title);
     const now = new Date();
     const doc = {
@@ -115,7 +129,7 @@ router.post("/", requireAuth, async (req, res) => {
     const db = getDb();
     const result = await db.collection("saves").insertOne(doc);
     const save = fullSave({ ...doc, _id: result.insertedId });
-    res.status(201).json({ save });
+    res.status(201).json({ save, user: usageResult.user, usage: usageResult.usage });
   } catch (err) {
     console.error("create save", err);
     res.status(500).json({ error: "Could not save to library" });
