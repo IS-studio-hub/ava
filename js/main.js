@@ -1,9 +1,26 @@
 import { LetterFieldEngine } from "./engine.js";
 import { fetchMe, signin, signout, signup } from "./auth.js";
 import { createSave, getSave } from "./saves.js";
+import {
+  alphabetFor,
+  detectScript,
+  normalizeLetter,
+  normalizeScript,
+  normalizeWord,
+  defaultLetter,
+} from "./sdf.js";
 
 const STORAGE_KEY = "ava.letterField.lastParams";
-const PRESETS = "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z".split(" ");
+const LATIN_ONLY_FONTS = new Set([
+  "Playfair Display",
+  "Cormorant Garamond",
+  "Bodoni Moda",
+  "Instrument Serif",
+  "Georgia",
+  "Times New Roman",
+  "Arial Black",
+  "Space Grotesk",
+]);
 
 function saveParams(params) {
   try {
@@ -20,11 +37,12 @@ function loadStoredParams() {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
     const merged = { ...LetterFieldEngine.defaults(), ...parsed };
-    merged.letter = String(merged.letter || "G").slice(0, 1).toUpperCase();
-    merged.word = String(merged.word || "")
-      .toUpperCase()
-      .replace(/[^A-Z]/g, "")
-      .slice(0, 10);
+    merged.script = detectScript(
+      `${merged.letter || ""}${merged.word || ""}`,
+      merged.script
+    );
+    merged.letter = normalizeLetter(merged.letter, merged.script);
+    merged.word = normalizeWord(merged.word, merged.script);
     if (Number.isFinite(merged.wordMerge) && merged.wordMerge > 0 && merged.wordMerge <= 1) {
       merged.wordMerge = Math.round(merged.wordMerge * 100);
     }
@@ -171,28 +189,76 @@ function bindStudio(engine) {
   const defaults = LetterFieldEngine.defaults();
   const letterInput = $("#letterInput");
   const wordInput = $("#wordInput");
+  const wordHelp = $("#wordHelp");
   const presets = $("#letterPresets");
   const imageInput = $("#imageInput");
   const imagePreview = $("#imagePreview");
   const btnPickImage = $("#btnPickImage");
   const btnClearImage = $("#btnClearImage");
 
-  PRESETS.forEach((ch) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = ch;
-    btn.addEventListener("click", () => {
-      letterInput.value = ch;
-      wordInput.value = "";
-      syncLetter();
-      syncWord();
+  function currentScript() {
+    return normalizeScript(engine.params.script);
+  }
+
+  function applyScriptUI(script) {
+    const hebrew = script === "hebrew";
+    $("#scriptLatin")?.classList.toggle("is-active", !hebrew);
+    $("#scriptHebrew")?.classList.toggle("is-active", hebrew);
+    if (presets) presets.dataset.script = script;
+    if (letterInput) {
+      letterInput.dir = hebrew ? "rtl" : "ltr";
+      letterInput.classList.toggle("text-input--hebrew", hebrew);
+    }
+    if (wordInput) {
+      wordInput.dir = hebrew ? "rtl" : "ltr";
+      wordInput.placeholder = hebrew ? "למשל שלום" : "e.g. AVA";
+    }
+    if (wordHelp) {
+      wordHelp.textContent = hebrew
+        ? "Type a Hebrew word. Each big letter is built from that same letter. Leave empty for a single letter."
+        : "Type a word to form it from small letters (each big letter uses its own lowercase). Leave empty for a single letter.";
+    }
+  }
+
+  function renderPresets() {
+    if (!presets) return;
+    presets.innerHTML = "";
+    alphabetFor(currentScript()).forEach((ch) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = ch;
+      btn.addEventListener("click", () => {
+        letterInput.value = ch;
+        wordInput.value = "";
+        syncLetter();
+        syncWord();
+      });
+      presets.appendChild(btn);
     });
-    presets.appendChild(btn);
-  });
+    markPreset();
+  }
+
+  function setScript(next) {
+    const script = normalizeScript(next);
+    const patch = { script };
+    if (script === "hebrew" && LATIN_ONLY_FONTS.has(engine.params.fontFamily)) {
+      patch.fontFamily = "Heebo";
+      const fontEl = $("#fontFamily");
+      if (fontEl) fontEl.value = "Heebo";
+    }
+    engine.setParams(patch);
+    letterInput.value = engine.params.letter;
+    wordInput.value = engine.params.word || "";
+    applyScriptUI(script);
+    renderPresets();
+    syncLetter();
+    syncWord();
+  }
 
   function markPreset() {
-    const current = (letterInput.value || "G").toUpperCase();
-    const usingWord = Boolean((wordInput.value || "").replace(/[^A-Za-z]/g, ""));
+    const script = currentScript();
+    const current = normalizeLetter(letterInput.value || defaultLetter(script), script);
+    const usingWord = Boolean(normalizeWord(wordInput.value || "", script));
     const usingImage = Boolean(engine.params.imageSrc);
     presets.querySelectorAll("button").forEach((b) => {
       b.classList.toggle("is-active", !usingWord && !usingImage && b.textContent === current);
@@ -213,20 +279,25 @@ function bindStudio(engine) {
   }
 
   function syncLetter() {
-    const letter = (letterInput.value || "G").slice(0, 1).toUpperCase();
+    const script = currentScript();
+    const letter = normalizeLetter(letterInput.value || defaultLetter(script), script);
     letterInput.value = letter;
-    engine.setParams({ letter });
+    engine.setParams({ letter, script });
     markPreset();
   }
 
   function syncWord() {
-    const raw = (wordInput.value || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 10);
+    const script = currentScript();
+    const raw = normalizeWord(wordInput.value || "", script);
     wordInput.value = raw;
-    engine.setParams({ word: raw });
+    engine.setParams({ word: raw, script });
     markPreset();
     const label = $("#resultLetter");
     if (label) label.textContent = raw || engine.params.letter;
   }
+
+  $("#scriptLatin")?.addEventListener("click", () => setScript("latin"));
+  $("#scriptHebrew")?.addEventListener("click", () => setScript("hebrew"));
 
   letterInput.addEventListener("input", syncLetter);
   letterInput.addEventListener("focus", () => letterInput.select());
@@ -259,6 +330,8 @@ function bindStudio(engine) {
   // Hydrate from engine/URL first
   letterInput.value = engine.params.letter;
   wordInput.value = engine.params.word || "";
+  applyScriptUI(currentScript());
+  renderPresets();
   syncImagePreview(engine.params.imageSrc || "");
 
   SLIDERS.forEach((id) => {
@@ -330,8 +403,9 @@ function bindStudio(engine) {
   });
 
   $("#btnReset").addEventListener("click", () => {
+    setScript(defaults.script || "latin");
     Object.entries(defaults).forEach(([key, value]) => {
-      if (key === "particle") return;
+      if (key === "particle" || key === "script") return;
       const el = document.getElementById(
         key === "letter" ? "letterInput" : key === "word" ? "wordInput" : key
       );
@@ -440,6 +514,8 @@ async function loadSaveFromQuery(engine) {
       if (!el || engine.params[key] === undefined) return;
       el.value = engine.params[key];
     });
+    const scriptBtn = engine.params.script === "hebrew" ? $("#scriptHebrew") : $("#scriptLatin");
+    scriptBtn?.click();
     await engine.ready();
     const status = $("#saveStatus");
     if (status) status.textContent = `Loaded “${save.title}” from library.`;

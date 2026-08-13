@@ -5,11 +5,53 @@
 
 const SDF_SIZE = 320;
 
-function normalizeWord(text) {
-  return String(text || "")
-    .toUpperCase()
-    .replace(/[^A-Z]/g, "")
-    .slice(0, 10);
+export const LATIN_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+export const HEBREW_LETTERS = "אבגדהוזחטיכלמנסעפצקרשת".split("");
+
+const HEBREW_RE = /[\u0590-\u05FF]/;
+const FONT_FALLBACK = `"Noto Sans Hebrew", "Heebo", "Arial Hebrew", "Helvetica Neue", Arial, sans-serif`;
+
+export function isHebrewChar(ch) {
+  return HEBREW_RE.test(String(ch || ""));
+}
+
+export function normalizeScript(script) {
+  return script === "hebrew" ? "hebrew" : "latin";
+}
+
+export function detectScript(text, fallback = "latin") {
+  if (HEBREW_RE.test(String(text || ""))) return "hebrew";
+  if (/[A-Za-z]/.test(String(text || ""))) return "latin";
+  return normalizeScript(fallback);
+}
+
+export function alphabetFor(script) {
+  return normalizeScript(script) === "hebrew" ? HEBREW_LETTERS.slice() : LATIN_LETTERS.slice();
+}
+
+export function defaultLetter(script) {
+  return normalizeScript(script) === "hebrew" ? "א" : "G";
+}
+
+export function normalizeLetter(letter, script = "latin") {
+  const ch = String(letter || "").slice(0, 1);
+  if (normalizeScript(script) === "hebrew" || isHebrewChar(ch)) {
+    return isHebrewChar(ch) ? ch : defaultLetter("hebrew");
+  }
+  const up = ch.toUpperCase();
+  return /^[A-Z]$/.test(up) ? up : defaultLetter("latin");
+}
+
+function normalizeWord(text, script = "latin") {
+  const raw = String(text || "");
+  if (normalizeScript(script) === "hebrew" || HEBREW_RE.test(raw)) {
+    return raw.replace(/[^\u0590-\u05FF]/g, "").slice(0, 10);
+  }
+  return raw.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 10);
+}
+
+function fontFace(weight, px, fontFamily) {
+  return `${weight} ${px}px "${fontFamily}", ${FONT_FALLBACK}`;
 }
 
 function paintLetter(ctx, letter, size, scale, fontFamily = "Arial Black") {
@@ -18,7 +60,7 @@ function paintLetter(ctx, letter, size, scale, fontFamily = "Arial Black") {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   const fontSize = size * scale;
-  ctx.font = `900 ${fontSize}px "${fontFamily}", "Arial Black", Impact, Arial, sans-serif`;
+  ctx.font = fontFace(900, fontSize, fontFamily);
   ctx.save();
   ctx.translate(size / 2, size / 2 + fontSize * 0.03);
   ctx.scale(1.04, 1);
@@ -37,7 +79,7 @@ function paintWord(ctx, idCtx, chars, size, scale, fontFamily, merge) {
   const n = chars.length;
   const fit = Math.min(1, 2.15 / (n + 0.65));
   const fontSize = size * scale * fit;
-  const font = `900 ${fontSize}px "${fontFamily}", "Arial Black", Impact, Arial, sans-serif`;
+  const font = fontFace(900, fontSize, fontFamily);
   ctx.font = font;
   idCtx.font = font;
   ctx.textAlign = "center";
@@ -58,11 +100,12 @@ function paintWord(ctx, idCtx, chars, size, scale, fontFamily, merge) {
   }
 
   const y = size / 2 + fontSize * 0.03;
-  let x = size / 2 - total / 2;
+  const rtl = chars.some((ch) => HEBREW_RE.test(ch));
+  let x = rtl ? size / 2 + total / 2 : size / 2 - total / 2;
 
   for (let i = 0; i < n; i++) {
     const w = widths[i];
-    const cx = x + w / 2;
+    const cx = rtl ? x - w / 2 : x + w / 2;
     ctx.save();
     ctx.translate(cx, y);
     ctx.scale(1.02, 1);
@@ -77,7 +120,8 @@ function paintWord(ctx, idCtx, chars, size, scale, fontFamily, merge) {
     idCtx.fillText(chars[i], 0, 0);
     idCtx.restore();
 
-    x += w + gap;
+    if (rtl) x -= w + gap;
+    else x += w + gap;
   }
 }
 
@@ -215,8 +259,8 @@ function clamp01(v) {
   return Math.max(0, Math.min(1, v));
 }
 
-export function createLetterField(letter, scale = 0.72, fontFamily = "Arial Black") {
-  const glyph = String(letter || "G").slice(0, 1).toUpperCase();
+export function createLetterField(letter, scale = 0.72, fontFamily = "Arial Black", script = "latin") {
+  const glyph = normalizeLetter(letter, script);
   const canvas = document.createElement("canvas");
   canvas.width = SDF_SIZE;
   canvas.height = SDF_SIZE;
@@ -226,7 +270,7 @@ export function createLetterField(letter, scale = 0.72, fontFamily = "Arial Blac
   return buildFieldFromMask(mask, glyph, [glyph], null);
 }
 
-const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const ALPHA = LATIN_LETTERS;
 
 function hash01(i, j) {
   const s = Math.sin(i * 127.1 + j * 311.7) * 43758.5453;
@@ -259,6 +303,7 @@ export function createImageField(image, {
   scale = 0.82,
   invert = false,
   threshold = 0.5,
+  chars = LATIN_LETTERS,
 } = {}) {
   const size = SDF_SIZE;
   const canvas = document.createElement("canvas");
@@ -296,13 +341,14 @@ export function createImageField(image, {
     mask[i] = v >= cut ? 1 : 0;
   }
 
-  const field = buildFieldFromMask(mask, "A", ALPHA, null);
+  const pool = Array.isArray(chars) && chars.length ? chars.slice() : LATIN_LETTERS.slice();
+  const field = buildFieldFromMask(mask, pool[0], pool, null);
   field.mode = "image";
-  field.chars = ALPHA.slice();
+  field.chars = pool;
   field.sampleLuma = (nx, ny) => sampleScalar(ink, nx, ny, size);
   field.letterAt = (nx, ny) => {
     const h = hash01(Math.floor((nx + 2) * 131.7), Math.floor((ny + 2) * 197.3));
-    return ALPHA[Math.floor(h * ALPHA.length)];
+    return pool[Math.floor(h * pool.length)];
   };
   return field;
 }
@@ -311,10 +357,10 @@ export function createImageField(image, {
  * Word field: each letter forms one shape; merge pulls letters together so
  * small glyphs blend where letters meet.
  */
-export function createWordField(word, scale = 0.72, fontFamily = "Arial Black", merge = 45) {
-  const chars = normalizeWord(word).split("");
+export function createWordField(word, scale = 0.72, fontFamily = "Arial Black", merge = 45, script = "latin") {
+  const chars = normalizeWord(word, script).split("");
   if (chars.length <= 1) {
-    return createLetterField(chars[0] || "G", scale, fontFamily);
+    return createLetterField(chars[0] || defaultLetter(script), scale, fontFamily, script);
   }
 
   const canvas = document.createElement("canvas");
@@ -333,4 +379,4 @@ export function createWordField(word, scale = 0.72, fontFamily = "Arial Black", 
   return buildFieldFromMask(mask, chars[0], chars, ids);
 }
 
-export { normalizeWord };
+export { normalizeWord, fontFace };

@@ -28,7 +28,7 @@ function titleFromParams(params = {}, fallback = "") {
   if (fallback) return String(fallback).trim().slice(0, 80);
   if (params.imageSrc) return "Image";
   const word = String(params.word || "").trim();
-  const letter = String(params.letter || "G").slice(0, 1).toUpperCase();
+  const letter = String(params.letter || "").slice(0, 1);
   return word || letter || "Untitled";
 }
 
@@ -106,11 +106,8 @@ router.post("/", requireAuth, async (req, res) => {
     const doc = {
       userId: req.user.id,
       title,
-      letter: String(params.letter || "G").slice(0, 1).toUpperCase(),
-      word: String(params.word || "")
-        .toUpperCase()
-        .replace(/[^A-Z]/g, "")
-        .slice(0, 10),
+      letter: String(params.letter || "").slice(0, 1),
+      word: String(params.word || "").slice(0, 10),
       params,
       createdAt: now,
       updatedAt: now,

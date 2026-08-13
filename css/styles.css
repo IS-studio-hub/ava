@@ -260,6 +260,38 @@ body {
   text-transform: uppercase;
 }
 
+.text-input--letter.text-input--hebrew {
+  font-family: "Heebo", "Noto Sans Hebrew", sans-serif;
+  text-transform: none;
+}
+
+.script-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  margin: 0.15rem 0 0.15rem;
+}
+
+.script-toggle__btn {
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.script-toggle__btn.is-active {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
 .file-input {
   position: absolute;
   width: 1px;
@@ -306,6 +338,12 @@ body {
   font-family: var(--font-ui);
   font-size: 0.8rem;
   cursor: pointer;
+}
+
+.presets[data-script="hebrew"] button {
+  width: 2.05rem;
+  font-family: "Heebo", "Noto Sans Hebrew", sans-serif;
+  font-size: 0.92rem;
 }
 
 .presets button:hover,

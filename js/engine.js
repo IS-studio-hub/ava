@@ -1,5 +1,15 @@
 import { fbm } from "./noise.js";
-import { createLetterField, createWordField, createImageField, normalizeWord } from "./sdf.js";
+import {
+  createLetterField,
+  createWordField,
+  createImageField,
+  normalizeWord,
+  normalizeLetter,
+  normalizeScript,
+  detectScript,
+  alphabetFor,
+  fontFace,
+} from "./sdf.js";
 
 /**
  * Reference-matched kinetic type field.
@@ -8,6 +18,7 @@ import { createLetterField, createWordField, createImageField, normalizeWord } f
  */
 
 const DEFAULTS = {
+  script: "latin",
   letter: "G",
   word: "",
   wordMerge: 45,
@@ -110,7 +121,7 @@ function smoothstep(edge0, edge1, x) {
 function particleChar(letter) {
   const ch = String(letter || "G").slice(0, 1);
   if (/^[A-Za-z]$/.test(ch)) return ch.toLowerCase();
-  return ch;
+  return ch || "G";
 }
 
 function hash01(i, j) {
@@ -123,9 +134,13 @@ export class LetterFieldEngine {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
     this.params = { ...DEFAULTS, ...options };
+    this.params.script = options.script != null
+      ? normalizeScript(options.script)
+      : detectScript(`${this.params.letter || ""}${this.params.word || ""}`, DEFAULTS.script);
     this.params.bgColor = normalizeHex(this.params.bgColor, DEFAULTS.bgColor);
     this.params.inkColor = normalizeHex(this.params.inkColor, DEFAULTS.inkColor);
-    this.params.word = normalizeWord(this.params.word);
+    this.params.letter = normalizeLetter(this.params.letter, this.params.script);
+    this.params.word = normalizeWord(this.params.word, this.params.script);
     if (Number.isFinite(this.params.wordMerge)) {
       if (this.params.wordMerge > 0 && this.params.wordMerge <= 1) {
         this.params.wordMerge = Math.round(this.params.wordMerge * 100);
@@ -176,9 +191,11 @@ export class LetterFieldEngine {
     if (partial.theme && !partial.bgColor && !partial.inkColor) {
       Object.assign(this.params, themeColors(this.params.theme));
     }
+    this.params.script = normalizeScript(this.params.script);
     this.params.bgColor = normalizeHex(this.params.bgColor, DEFAULTS.bgColor);
     this.params.inkColor = normalizeHex(this.params.inkColor, DEFAULTS.inkColor);
-    this.params.word = normalizeWord(this.params.word);
+    this.params.letter = normalizeLetter(this.params.letter, this.params.script);
+    this.params.word = normalizeWord(this.params.word, this.params.script);
     if (Number.isFinite(this.params.wordMerge)) {
       if (this.params.wordMerge > 0 && this.params.wordMerge <= 1) {
         this.params.wordMerge = Math.round(this.params.wordMerge * 100);
@@ -198,6 +215,7 @@ export class LetterFieldEngine {
     } else if (
       this.params.letter !== prev.letter ||
       this.params.word !== prev.word ||
+      this.params.script !== prev.script ||
       this.params.wordMerge !== prev.wordMerge ||
       this.params.letterScale !== prev.letterScale ||
       this.params.fontFamily !== prev.fontFamily ||
@@ -210,6 +228,7 @@ export class LetterFieldEngine {
     if (
       this.params.letter !== prev.letter ||
       this.params.word !== prev.word ||
+      this.params.script !== prev.script ||
       this.params.imageSrc !== prev.imageSrc ||
       this.params.particle !== prev.particle ||
       this.params.fontFamily !== prev.fontFamily ||
@@ -260,6 +279,7 @@ export class LetterFieldEngine {
         scale: p.letterScale,
         invert: Boolean(p.imageInvert),
         threshold: p.imageThreshold ?? 0.48,
+        chars: alphabetFor(p.script),
       });
       return;
     }
@@ -268,26 +288,28 @@ export class LetterFieldEngine {
         p.word,
         p.letterScale,
         p.fontFamily,
-        p.wordMerge
+        p.wordMerge,
+        p.script
       );
     } else if (p.word && p.word.length === 1) {
-      this.letterField = createLetterField(p.word, p.letterScale, p.fontFamily);
+      this.letterField = createLetterField(p.word, p.letterScale, p.fontFamily, p.script);
     } else {
       this.letterField = createLetterField(
         p.letter,
         p.letterScale,
-        p.fontFamily
+        p.fontFamily,
+        p.script
       );
     }
   }
 
   activeChars() {
     if (this.letterField?.mode === "image") {
-      return this.letterField.chars || "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+      return this.letterField.chars || alphabetFor(this.params.script);
     }
     if (this.letterField?.chars?.length) return this.letterField.chars;
-    if (this.params.word) return normalizeWord(this.params.word).split("");
-    return [String(this.params.letter || "G").slice(0, 1).toUpperCase()];
+    if (this.params.word) return normalizeWord(this.params.word, this.params.script).split("");
+    return [normalizeLetter(this.params.letter, this.params.script)];
   }
 
   rebuildGlyphSprite() {
@@ -317,7 +339,7 @@ export class LetterFieldEngine {
       g.strokeStyle = ink;
       g.textAlign = "center";
       g.textBaseline = "middle";
-      g.font = `${weight} 48px "${p.fontFamily}", "Helvetica Neue", Arial, sans-serif`;
+      g.font = fontFace(weight, 48, p.fontFamily);
       if (p.filledGlyphs) g.fillText(glyph, size / 2, size / 2 + 1);
       if (p.stroke > 0.05) {
         g.lineWidth = Math.max(0.9, p.stroke * 1.8);
@@ -793,8 +815,12 @@ export class LetterFieldEngine {
       "animPulse", "animTwinkle", "animRipple", "animBubble", "imageInvert",
     ]);
 
-    if (q.has("letter")) out.letter = q.get("letter").slice(0, 1).toUpperCase() || "G";
-    if (q.has("word")) out.word = normalizeWord(q.get("word"));
+    if (q.has("script")) out.script = normalizeScript(q.get("script"));
+    if (q.has("letter")) out.letter = q.get("letter").slice(0, 1);
+    if (q.has("word")) out.word = q.get("word");
+    if (!q.has("script")) out.script = detectScript(`${out.letter}${out.word}`, out.script);
+    out.letter = normalizeLetter(out.letter, out.script);
+    out.word = normalizeWord(out.word, out.script);
     out.particle = particleChar(out.word ? out.word.slice(0, 1) : out.letter);
     if (q.has("fontFamily")) out.fontFamily = q.get("fontFamily");
     if (q.has("layout")) out.layout = q.get("layout");
