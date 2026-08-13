@@ -259,8 +259,61 @@ function bindVideoDialog() {
   const durationEl = $("#exportDuration");
   const valueEl = document.querySelector('.value[data-for="exportDuration"]');
   durationEl?.addEventListener("input", () => {
-    if (valueEl) valueEl.textContent = String(Math.round(durationEl.value));
+    if (valueEl && !valueEl.querySelector("input")) {
+      valueEl.textContent = String(Math.round(durationEl.value));
+    }
   });
+
+  if (valueEl && durationEl) {
+    valueEl.tabIndex = 0;
+    valueEl.setAttribute("role", "button");
+    valueEl.setAttribute("title", "Click to type a value");
+    const startEdit = () => {
+      if (valueEl.querySelector("input")) return;
+      const input = document.createElement("input");
+      input.className = "value-input";
+      input.type = "number";
+      input.step = durationEl.step || "1";
+      input.min = durationEl.min;
+      input.max = durationEl.max;
+      input.value = durationEl.value;
+      valueEl.textContent = "";
+      valueEl.appendChild(input);
+      input.focus();
+      input.select();
+      let done = false;
+      const finish = (ok) => {
+        if (done) return;
+        done = true;
+        const raw = parseFloat(input.value);
+        input.remove();
+        if (ok && Number.isFinite(raw)) {
+          const min = parseFloat(durationEl.min);
+          const max = parseFloat(durationEl.max);
+          const next = Math.max(min, Math.min(max, Math.round(raw)));
+          durationEl.value = String(next);
+        }
+        valueEl.textContent = String(Math.round(durationEl.value));
+      };
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          finish(true);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          finish(false);
+        }
+      });
+      input.addEventListener("blur", () => finish(true));
+    };
+    valueEl.addEventListener("click", startEdit);
+    valueEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        startEdit();
+      }
+    });
+  }
 
   $("#btnCloseVideo")?.addEventListener("click", () => $("#videoDialog")?.close?.());
 

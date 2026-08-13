@@ -158,12 +158,97 @@ function isResultMode() {
 
 function formatValue(id, value) {
   const out = document.querySelector(`.value[data-for="${id}"]`);
-  if (!out) return;
+  if (!out || out.querySelector("input")) return;
   if (Number.isInteger(value) || Math.abs(value - Math.round(value)) < 1e-6) {
     out.textContent = String(Math.round(value));
   } else {
     out.textContent = value.toFixed(2);
   }
+}
+
+function snapToStep(value, min, step) {
+  if (!Number.isFinite(step) || step <= 0) return value;
+  const base = Number.isFinite(min) ? min : 0;
+  const snapped = base + Math.round((value - base) / step) * step;
+  const decimals = String(step).includes(".") ? (String(step).split(".")[1] || "").length : 0;
+  return Number(snapped.toFixed(Math.min(6, decimals)));
+}
+
+function commitSliderValue(id, raw, engine) {
+  const slider = document.getElementById(id);
+  if (!slider) return;
+  const min = parseFloat(slider.min);
+  const max = parseFloat(slider.max);
+  const step = parseFloat(slider.step);
+  let value = parseFloat(String(raw).replace(",", "."));
+  if (!Number.isFinite(value)) {
+    formatValue(id, parseFloat(slider.value));
+    return;
+  }
+  if (Number.isFinite(min)) value = Math.max(min, value);
+  if (Number.isFinite(max)) value = Math.min(max, value);
+  if (Number.isFinite(step) && step > 0) value = snapToStep(value, min, step);
+  slider.value = String(value);
+  const applied = parseFloat(slider.value);
+  formatValue(id, applied);
+  engine.setParams({ [id]: applied });
+}
+
+function beginEditValue(span, engine) {
+  const id = span.getAttribute("data-for");
+  if (!id || span.querySelector("input")) return;
+  const slider = document.getElementById(id);
+  if (!slider) return;
+
+  const input = document.createElement("input");
+  input.className = "value-input";
+  input.type = "number";
+  input.inputMode = "decimal";
+  if (slider.step) input.step = slider.step;
+  if (slider.min !== "") input.min = slider.min;
+  if (slider.max !== "") input.max = slider.max;
+  input.value = slider.value;
+  input.setAttribute("aria-label", `Value for ${id}`);
+  span.textContent = "";
+  span.appendChild(input);
+  input.focus();
+  input.select();
+
+  let done = false;
+  const finish = (ok) => {
+    if (done) return;
+    done = true;
+    const raw = input.value;
+    input.remove();
+    if (ok) commitSliderValue(id, raw, engine);
+    else formatValue(id, parseFloat(slider.value));
+  };
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      finish(true);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      finish(false);
+    }
+  });
+  input.addEventListener("blur", () => finish(true));
+}
+
+function bindEditableValues(engine) {
+  document.querySelectorAll(".value[data-for]").forEach((span) => {
+    span.tabIndex = 0;
+    span.setAttribute("role", "button");
+    span.setAttribute("title", "Click to type a value");
+    span.addEventListener("click", () => beginEditValue(span, engine));
+    span.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        beginEditValue(span, engine);
+      }
+    });
+  });
 }
 
 async function compressImageFile(file) {
@@ -366,6 +451,7 @@ function bindStudio(engine) {
       engine.setParams({ [id]: value });
     });
   });
+  bindEditableValues(engine);
 
   CHECKS.forEach((id) => {
     const el = document.getElementById(id);

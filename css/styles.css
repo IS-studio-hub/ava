@@ -193,6 +193,46 @@ body {
   font-variant-numeric: tabular-nums;
   font-size: 0.76rem;
   color: var(--ink);
+  min-width: 2.8rem;
+  text-align: right;
+  cursor: text;
+  border-radius: 6px;
+  padding: 0.12rem 0.3rem;
+}
+
+.value:hover,
+.value:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.value-input {
+  width: 4.4rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #121212;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding: 0.12rem 0.28rem;
+  outline: none;
+}
+
+.value-input:focus {
+  border-color: rgba(236, 230, 214, 0.45);
+}
+
+.value-input::-webkit-outer-spin-button,
+.value-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.value-input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .help {
