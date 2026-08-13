@@ -563,6 +563,7 @@ function bindAuth() {
     if (!bar) return;
     if (currentUser) {
       bar.innerHTML = `
+        <a class="btn btn--ghost btn--small" href="index.html">Home</a>
         <a class="btn btn--ghost btn--small" href="library.html">Library</a>
         <span class="stage__auth-user" title="${currentUser.email}">${currentUser.name || currentUser.email}</span>
         <button type="button" class="btn btn--ghost btn--small" id="btnSignOut">Sign out</button>
@@ -574,6 +575,7 @@ function bindAuth() {
       });
     } else {
       bar.innerHTML = `
+        <a class="btn btn--ghost btn--small" href="index.html">Home</a>
         <a class="btn btn--ghost btn--small" href="library.html">Library</a>
         <button type="button" class="btn btn--ghost btn--small" id="btnOpenAuth">Sign in</button>
       `;

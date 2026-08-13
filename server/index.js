@@ -28,7 +28,7 @@ app.use(express.static(root));
 
 app.get("*", (req, res, next) => {
   if (req.path.startsWith("/api/")) return next();
-  // Prefer exact static files; fallback to studio
+  // Prefer exact static files; fallback to homepage
   res.sendFile(path.join(root, "index.html"));
 });
 

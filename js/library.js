@@ -100,7 +100,7 @@ function renderGrid() {
         <h2 class="library-card__title">${save.title}</h2>
         <p class="help">${formatDate(save.updatedAt || save.createdAt)}</p>
         <div class="library-card__actions">
-          <a class="btn btn--ghost btn--small" href="index.html?load=${encodeURIComponent(save.id)}">Open</a>
+          <a class="btn btn--ghost btn--small" href="studio.html?load=${encodeURIComponent(save.id)}">Open</a>
           <button type="button" class="btn btn--ghost btn--small" data-act="embed" data-id="${save.id}">Embed</button>
           <button type="button" class="btn btn--primary btn--small" data-act="video" data-id="${save.id}">Video</button>
           <button type="button" class="btn btn--ghost btn--small" data-act="delete" data-id="${save.id}">Delete</button>

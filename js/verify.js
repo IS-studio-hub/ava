@@ -26,7 +26,7 @@ async function main() {
     if (message) message.textContent = err.message || "Please sign up again.";
     if (actions) {
       actions.hidden = false;
-      actions.innerHTML = `<a class="btn btn--primary" href="index.html">Back to studio</a>`;
+      actions.innerHTML = `<a class="btn btn--primary" href="studio.html">Back to studio</a>`;
     }
   }
 }

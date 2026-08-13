@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ava — Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,700&family=Cormorant+Garamond:wght@500;700&family=DM+Sans:wght@400;600;700&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;700;900&family=Playfair+Display:wght@500;700&family=Space+Grotesk:wght@400;600;700&family=Syne:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <main class="stage">
+      <header class="stage__brand">
+        <a class="library-brand" href="index.html">
+          <span class="stage__logo">Ava</span>
+          <span class="stage__tag">Studio</span>
+        </a>
+      </header>
+      <div class="stage__auth" id="authBar">
+        <a class="btn btn--ghost btn--small" href="index.html">Home</a>
+        <button type="button" class="btn btn--ghost btn--small" id="btnOpenAuth">Sign in</button>
+      </div>
+      <div class="stage__frame">
+        <canvas id="field" width="900" height="900" aria-label="Letter field animation"></canvas>
+      </div>
+        <p class="stage__hint">Move pointer for spin / ripple / bubble · Toggle animations in Controls</p>
+    </main>
+
+    <aside class="panel" id="panel">
+      <div class="panel__scroll">
+      <div class="panel__head">
+        <h1>Controls</h1>
+        <p>Choose a letter to form it on the grid. Control the small glyphs that build that uppercase shape.</p>
+      </div>
+
+      <section class="block">
+        <h2 class="block__title">Letter</h2>
+        <label class="label" for="letterInput">Main letter</label>
+        <input id="letterInput" class="text-input text-input--letter" type="text" maxlength="1" value="G" autocomplete="off" spellcheck="false" />
+        <div class="presets" id="letterPresets" aria-label="Quick letters"></div>
+
+        <label class="label" for="wordInput">Word</label>
+        <input id="wordInput" class="text-input" type="text" maxlength="10" value="" placeholder="e.g. AVA" autocomplete="off" spellcheck="false" />
+        <p class="help">Type a word to form it from small letters (each big letter uses its own lowercase). Leave empty for a single letter.</p>
+
+        <div class="slider-row">
+          <label class="label" for="wordMerge">Letter merge</label>
+          <span class="value" data-for="wordMerge">45</span>
+        </div>
+        <input id="wordMerge" type="range" min="-20" max="100" step="1" value="45" />
+        <p class="help">Positive pulls letters together; negative (−10, −20) widens the gap between them.</p>
+
+        <label class="label" for="imageInput">Image</label>
+        <div class="image-upload">
+          <input id="imageInput" class="file-input" type="file" accept="image/*" />
+          <div class="image-upload__row">
+            <button type="button" class="btn btn--ghost btn--small" id="btnPickImage">Upload image</button>
+            <button type="button" class="btn btn--ghost btn--small" id="btnClearImage" hidden>Clear</button>
+          </div>
+          <img id="imagePreview" class="image-upload__preview" alt="Uploaded image preview" hidden />
+        </div>
+        <p class="help">Form the photo with random small letters. Shape size, weight, softness, and letter scale work the same as text. Image overrides letter/word until cleared.</p>
+
+        <label class="toggle">
+          <input id="imageInvert" type="checkbox" />
+          <span>Invert image (light areas become the shape)</span>
+        </label>
+        <div class="slider-row">
+          <label class="label" for="imageThreshold">Image threshold</label>
+          <span class="value" data-for="imageThreshold">0.48</span>
+        </div>
+        <input id="imageThreshold" type="range" min="0.08" max="0.92" step="0.01" value="0.48" />
+      </section>
+
+      <section class="block">
+        <h2 class="block__title">Letter shape glyphs</h2>
+        <p class="help">These controls affect only the small letters that form the uppercase shape in the center.</p>
+
+        <div class="slider-row">
+          <label class="label" for="shapeAmount">Shape strength</label>
+          <span class="value" data-for="shapeAmount">1.00</span>
+        </div>
+        <input id="shapeAmount" type="range" min="0" max="1" step="0.01" value="1" />
+
+        <div class="slider-row">
+          <label class="label" for="shapeSize">Shape glyph size</label>
+          <span class="value" data-for="shapeSize">2.15</span>
+        </div>
+        <input id="shapeSize" type="range" min="1" max="3.5" step="0.01" value="2.15" />
+
+        <div class="slider-row">
+          <label class="label" for="shapeWeight">Shape weight</label>
+          <span class="value" data-for="shapeWeight">800</span>
+        </div>
+        <input id="shapeWeight" type="range" min="300" max="900" step="100" value="800" />
+
+        <div class="slider-row">
+          <label class="label" for="shapeSoftness">Edge softness</label>
+          <span class="value" data-for="shapeSoftness">0.35</span>
+        </div>
+        <input id="shapeSoftness" type="range" min="0.05" max="1" step="0.01" value="0.35" />
+
+        <div class="slider-row">
+          <label class="label" for="letterScale">Letter scale</label>
+          <span class="value" data-for="letterScale">0.82</span>
+        </div>
+        <input id="letterScale" type="range" min="0.35" max="0.95" step="0.01" value="0.82" />
+      </section>
+
+      <section class="block">
+        <h2 class="block__title">Font</h2>
+        <label class="label" for="fontFamily">Typeface</label>
+        <select id="fontFamily" class="select">
+          <option value="Inter" selected>Inter (sans)</option>
+          <option value="Space Grotesk">Space Grotesk</option>
+          <option value="DM Sans">DM Sans</option>
+          <option value="Arial Black">Arial Black</option>
+          <option value="Playfair Display">Playfair Display (serif)</option>
+          <option value="Cormorant Garamond">Cormorant Garamond</option>
+          <option value="Bodoni Moda">Bodoni Moda</option>
+          <option value="Instrument Serif">Instrument Serif</option>
+          <option value="Georgia">Georgia</option>
+          <option value="Times New Roman">Times New Roman</option>
+        </select>
+
+        <div class="slider-row">
+          <label class="label" for="fontWeight">Background weight</label>
+          <span class="value" data-for="fontWeight">400</span>
+        </div>
+        <input id="fontWeight" type="range" min="300" max="900" step="100" value="400" />
+
+        <div class="slider-row">
+          <label class="label" for="glyphSize">Background size</label>
+          <span class="value" data-for="glyphSize">0.55</span>
+        </div>
+        <input id="glyphSize" type="range" min="0.3" max="1.6" step="0.01" value="0.55" />
+
+        <div class="slider-row">
+          <label class="label" for="stroke">Outline weight</label>
+          <span class="value" data-for="stroke">0</span>
+        </div>
+        <input id="stroke" type="range" min="0" max="2.5" step="0.05" value="0" />
+
+        <label class="toggle">
+          <input id="filledGlyphs" type="checkbox" checked />
+          <span>Filled glyphs</span>
+        </label>
+      </section>
+
+      <section class="block">
+        <h2 class="block__title">Layout &amp; space</h2>
+        <label class="label" for="layout">Layout</label>
+        <select id="layout" class="select">
+          <option value="radial">Radial / spiral</option>
+          <option value="grid" selected>Grid field</option>
+          <option value="flow">Flow field</option>
+        </select>
+
+        <label class="label" for="theme">Theme</label>
+        <select id="theme" class="select">
+          <option value="light" selected>Light (black on white)</option>
+          <option value="dark">Dark (white on black)</option>
+          <option value="custom">Custom colors</option>
+        </select>
+
+        <div class="color-row">
+          <label class="color-field" for="bgColor">
+            <span class="label">Background</span>
+            <input id="bgColor" class="color-input" type="color" value="#ffffff" />
+          </label>
+          <label class="color-field" for="inkColor">
+            <span class="label">Letters</span>
+            <input id="inkColor" class="color-input" type="color" value="#111111" />
+          </label>
+        </div>
+
+        <div class="slider-row">
+          <label class="label" for="density">Density</label>
+          <span class="value" data-for="density">28</span>
+        </div>
+        <input id="density" type="range" min="20" max="1000" step="1" value="28" />
+        <p class="help">High values (hundreds+) are much heavier to animate.</p>
+
+        <div class="slider-row">
+          <label class="label" for="spacing">Spacing</label>
+          <span class="value" data-for="spacing">1.00</span>
+        </div>
+        <input id="spacing" type="range" min="0.55" max="1.8" step="0.01" value="1.00" />
+
+        <div class="slider-row">
+          <label class="label" for="bgDensity">Field brightness</label>
+          <span class="value" data-for="bgDensity">1.00</span>
+        </div>
+        <input id="bgDensity" type="range" min="0" max="1" step="0.01" value="1.00" />
+      </section>
+
+      <section class="block">
+        <h2 class="block__title">Depth &amp; warp</h2>
+        <div class="slider-row">
+          <label class="label" for="warp">Warp</label>
+          <span class="value" data-for="warp">0.00</span>
+        </div>
+        <input id="warp" type="range" min="0" max="2.5" step="0.01" value="0.00" />
+
+        <div class="slider-row">
+          <label class="label" for="bulge">Bulge / depth</label>
+          <span class="value" data-for="bulge">0.00</span>
+        </div>
+        <input id="bulge" type="range" min="0" max="2.5" step="0.01" value="0.00" />
+
+        <div class="slider-row">
+          <label class="label" for="twist">Twist</label>
+          <span class="value" data-for="twist">0.00</span>
+        </div>
+        <input id="twist" type="range" min="0" max="2" step="0.01" value="0.00" />
+      </section>
+
+      <section class="block">
+        <h2 class="block__title">Lighting</h2>
+        <div class="slider-row">
+          <label class="label" for="lightIntensity">Intensity</label>
+          <span class="value" data-for="lightIntensity">0.75</span>
+        </div>
+        <input id="lightIntensity" type="range" min="0.2" max="2.2" step="0.01" value="0.75" />
+
+        <div class="slider-row">
+          <label class="label" for="ambient">Ambient</label>
+          <span class="value" data-for="ambient">1.00</span>
+        </div>
+        <input id="ambient" type="range" min="0" max="1" step="0.01" value="1.00" />
+
+        <div class="slider-row">
+          <label class="label" for="lightX">Light X</label>
+          <span class="value" data-for="lightX">-0.40</span>
+        </div>
+        <input id="lightX" type="range" min="-1" max="1" step="0.01" value="-0.40" />
+
+        <div class="slider-row">
+          <label class="label" for="lightY">Light Y</label>
+          <span class="value" data-for="lightY">-0.55</span>
+        </div>
+        <input id="lightY" type="range" min="-1" max="1" step="0.01" value="-0.55" />
+
+        <div class="slider-row">
+          <label class="label" for="rimLight">Rim light</label>
+          <span class="value" data-for="rimLight">0.00</span>
+        </div>
+        <input id="rimLight" type="range" min="0" max="2" step="0.01" value="0.00" />
+
+        <div class="slider-row">
+          <label class="label" for="glow">Glow</label>
+          <span class="value" data-for="glow">0.00</span>
+        </div>
+        <input id="glow" type="range" min="0" max="1.5" step="0.01" value="0.00" />
+      </section>
+
+            <section class="block">
+        <h2 class="block__title">Animation</h2>
+        <p class="help">Effects apply to every glyph. Sliders under each one only apply when that effect is on.</p>
+
+        <div class="slider-row">
+          <label class="label" for="speed">Global speed</label>
+          <span class="value" data-for="speed">0.50</span>
+        </div>
+        <input id="speed" type="range" min="0" max="2" step="0.01" value="0.50" />
+
+        <div class="anim-card">
+          <label class="toggle">
+            <input id="animWave" type="checkbox" />
+            <span>Wave</span>
+          </label>
+          <div class="slider-row">
+            <label class="label" for="waveAmount">Amount</label>
+            <span class="value" data-for="waveAmount">0.35</span>
+          </div>
+          <input id="waveAmount" type="range" min="0" max="1.5" step="0.01" value="0.35" />
+          <div class="slider-row">
+            <label class="label" for="waveSpeed">Speed</label>
+            <span class="value" data-for="waveSpeed">1.00</span>
+          </div>
+          <input id="waveSpeed" type="range" min="0.1" max="3" step="0.01" value="1" />
+          <div class="slider-row">
+            <label class="label" for="waveScale">Scale</label>
+            <span class="value" data-for="waveScale">2.40</span>
+          </div>
+          <input id="waveScale" type="range" min="0.5" max="6" step="0.01" value="2.4" />
+        </div>
+
+        <div class="anim-card">
+          <label class="toggle">
+            <input id="animDrift" type="checkbox" />
+            <span>Soft drift (subtle random motion)</span>
+          </label>
+          <div class="slider-row">
+            <label class="label" for="driftAmount">Amount</label>
+            <span class="value" data-for="driftAmount">0.10</span>
+          </div>
+          <input id="driftAmount" type="range" min="0" max="0.4" step="0.01" value="0.10" />
+          <div class="slider-row">
+            <label class="label" for="driftSpeed">Speed</label>
+            <span class="value" data-for="driftSpeed">0.70</span>
+          </div>
+          <input id="driftSpeed" type="range" min="0.1" max="2.5" step="0.01" value="0.70" />
+        </div>
+
+        <div class="anim-card">
+          <label class="toggle">
+            <input id="animShake" type="checkbox" />
+            <span>Shake</span>
+          </label>
+          <div class="slider-row">
+            <label class="label" for="shakeAmount">Amount</label>
+            <span class="value" data-for="shakeAmount">0.12</span>
+          </div>
+          <input id="shakeAmount" type="range" min="0" max="0.5" step="0.01" value="0.12" />
+          <div class="slider-row">
+            <label class="label" for="shakeSpeed">Speed</label>
+            <span class="value" data-for="shakeSpeed">2.40</span>
+          </div>
+          <input id="shakeSpeed" type="range" min="0.5" max="8" step="0.01" value="2.40" />
+        </div>
+
+        <div class="anim-card">
+          <label class="toggle">
+            <input id="animPointerSpin" type="checkbox" />
+            <span>Pointer spin</span>
+          </label>
+          <p class="help">Letters rotate toward / with pointer movement.</p>
+          <div class="slider-row">
+            <label class="label" for="pointerSpinAmount">Amount</label>
+            <span class="value" data-for="pointerSpinAmount">1.00</span>
+          </div>
+          <input id="pointerSpinAmount" type="range" min="0" max="2" step="0.01" value="1" />
+          <div class="slider-row">
+            <label class="label" for="pointerSpinLag">Lag / smoothness</label>
+            <span class="value" data-for="pointerSpinLag">0.18</span>
+          </div>
+          <input id="pointerSpinLag" type="range" min="0.02" max="0.6" step="0.01" value="0.18" />
+        </div>
+
+        <div class="anim-card">
+          <label class="toggle">
+            <input id="animPulse" type="checkbox" />
+            <span>Pulse (size breathe)</span>
+          </label>
+          <div class="slider-row">
+            <label class="label" for="pulseAmount">Amount</label>
+            <span class="value" data-for="pulseAmount">0.18</span>
+          </div>
+          <input id="pulseAmount" type="range" min="0" max="0.8" step="0.01" value="0.18" />
+          <div class="slider-row">
+            <label class="label" for="pulseSpeed">Speed</label>
+            <span class="value" data-for="pulseSpeed">1.20</span>
+          </div>
+          <input id="pulseSpeed" type="range" min="0.2" max="4" step="0.01" value="1.20" />
+        </div>
+
+        <div class="anim-card">
+          <label class="toggle">
+            <input id="animTwinkle" type="checkbox" />
+            <span>Twinkle (opacity flicker)</span>
+          </label>
+          <div class="slider-row">
+            <label class="label" for="twinkleAmount">Amount</label>
+            <span class="value" data-for="twinkleAmount">0.22</span>
+          </div>
+          <input id="twinkleAmount" type="range" min="0" max="0.8" step="0.01" value="0.22" />
+          <div class="slider-row">
+            <label class="label" for="twinkleSpeed">Speed</label>
+            <span class="value" data-for="twinkleSpeed">1.50</span>
+          </div>
+          <input id="twinkleSpeed" type="range" min="0.2" max="5" step="0.01" value="1.50" />
+        </div>
+
+        <div class="anim-card">
+          <label class="toggle">
+            <input id="animRipple" type="checkbox" />
+            <span>Pointer ripple</span>
+          </label>
+          <p class="help">Push glyphs outward from the pointer.</p>
+          <div class="slider-row">
+            <label class="label" for="rippleAmount">Amount</label>
+            <span class="value" data-for="rippleAmount">0.25</span>
+          </div>
+          <input id="rippleAmount" type="range" min="0" max="1" step="0.01" value="0.25" />
+          <div class="slider-row">
+            <label class="label" for="rippleRadius">Radius</label>
+            <span class="value" data-for="rippleRadius">0.28</span>
+          </div>
+          <input id="rippleRadius" type="range" min="0.08" max="0.7" step="0.01" value="0.28" />
+        </div>
+
+        <div class="anim-card">
+          <label class="toggle">
+            <input id="animBubble" type="checkbox" />
+            <span>Bubble</span>
+          </label>
+          <p class="help">Spherical lens bulge — glyphs swell and fan around a moving bubble. Pointer steers it.</p>
+          <div class="slider-row">
+            <label class="label" for="bubbleAmount">Amount</label>
+            <span class="value" data-for="bubbleAmount">0.90</span>
+          </div>
+          <input id="bubbleAmount" type="range" min="0" max="2" step="0.01" value="0.90" />
+          <div class="slider-row">
+            <label class="label" for="bubbleRadius">Radius</label>
+            <span class="value" data-for="bubbleRadius">0.36</span>
+          </div>
+          <input id="bubbleRadius" type="range" min="0.08" max="0.8" step="0.01" value="0.36" />
+          <div class="slider-row">
+            <label class="label" for="bubbleSpeed">Speed</label>
+            <span class="value" data-for="bubbleSpeed">0.55</span>
+          </div>
+          <input id="bubbleSpeed" type="range" min="0" max="2.5" step="0.01" value="0.55" />
+          <div class="slider-row">
+            <label class="label" for="bubbleScale">Letter scale</label>
+            <span class="value" data-for="bubbleScale">1.00</span>
+          </div>
+          <input id="bubbleScale" type="range" min="0" max="2" step="0.01" value="1" />
+        </div>
+
+        <label class="toggle">
+          <input id="autoMorph" type="checkbox" />
+          <span>Auto morph (field ↔ letter)</span>
+        </label>
+        <label class="toggle">
+          <input id="followPointer" type="checkbox" />
+          <span>Light follows pointer</span>
+        </label>
+        <label class="toggle">
+          <input id="organic" type="checkbox" />
+          <span>Organic variation</span>
+        </label>
+      </section>
+
+      </section>
+      </div>
+
+      <div class="panel__actions">
+        <button type="button" class="btn btn--ghost" id="btnReset">Reset</button>
+        <button type="button" class="btn btn--ghost" id="btnPause">Pause</button>
+        <button type="button" class="btn btn--primary" id="btnSave">Save</button>
+        <p class="help panel__save-hint" id="saveStatus" aria-live="polite"></p>
+      </div>
+    </aside>
+
+    <dialog class="embed-dialog" id="embedDialog">
+      <form method="dialog" class="embed-dialog__inner">
+        <h2 class="embed-dialog__title">Saved</h2>
+        <p class="help" id="saveDialogHelp">Your piece is in the library. Embed and video download are available there.</p>
+        <div class="embed-dialog__actions">
+          <a class="btn btn--primary" href="library.html" id="btnGoLibrary">Open library</a>
+          <button type="submit" class="btn btn--ghost" value="close">Close</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="auth-dialog" id="authDialog">
+      <div class="auth-dialog__inner">
+        <h2 class="auth-dialog__title" id="authTitle">Sign in</h2>
+        <p class="help" id="authHelp">Save your work under your Ava account.</p>
+
+        <div class="auth-tabs" role="tablist">
+          <button type="button" class="auth-tab is-active" data-mode="signin" id="tabSignin">Sign in</button>
+          <button type="button" class="auth-tab" data-mode="signup" id="tabSignup">Sign up</button>
+        </div>
+
+        <form id="authForm" class="auth-form" autocomplete="on">
+          <div class="auth-field" id="authNameField" hidden>
+            <label class="label" for="authName">Name</label>
+            <input id="authName" class="text-input" type="text" name="name" maxlength="80" autocomplete="name" />
+          </div>
+          <div class="auth-field">
+            <label class="label" for="authEmail">Email</label>
+            <input id="authEmail" class="text-input" type="email" name="email" required autocomplete="email" />
+          </div>
+          <div class="auth-field">
+            <label class="label" for="authPassword">Password</label>
+            <input id="authPassword" class="text-input" type="password" name="password" required minlength="6" autocomplete="current-password" />
+          </div>
+          <p class="auth-error" id="authError" hidden></p>
+          <div class="auth-dialog__actions">
+            <button type="submit" class="btn btn--primary" id="authSubmit">Sign in</button>
+            <button type="button" class="btn btn--ghost" id="authCancel">Close</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+  </div>
+
+  <button type="button" class="panel-toggle" id="btnTogglePanel" aria-label="Toggle controls">Controls</button>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -28,7 +28,8 @@ Never commit `.env`.
 
 | Path | Purpose |
 |---|---|
-| `/` | Studio |
+| `/` | Homepage — sign in/up, how to use, plans |
+| `/studio.html` | Letter Field studio |
 | `/library.html` | Saved pieces, embed + video download |
 | `/embed.html?id=` | Public embed (stops if the save is deleted) |
 | `/verify.html?token=` | Email verification |
