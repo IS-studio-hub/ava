@@ -22,7 +22,7 @@
       <div class="stage__frame">
         <canvas id="field" width="900" height="900" aria-label="Letter field animation"></canvas>
       </div>
-      <p class="stage__hint">Move pointer for spin / ripple · Toggle animations in Controls</p>
+        <p class="stage__hint">Move pointer for spin / ripple / bubble · Toggle animations in Controls</p>
     </main>
 
     <aside class="panel" id="panel">
@@ -386,6 +386,34 @@
             <span class="value" data-for="rippleRadius">0.28</span>
           </div>
           <input id="rippleRadius" type="range" min="0.08" max="0.7" step="0.01" value="0.28" />
+        </div>
+
+        <div class="anim-card">
+          <label class="toggle">
+            <input id="animBubble" type="checkbox" />
+            <span>Bubble</span>
+          </label>
+          <p class="help">Spherical lens bulge — glyphs swell and fan around a moving bubble. Pointer steers it.</p>
+          <div class="slider-row">
+            <label class="label" for="bubbleAmount">Amount</label>
+            <span class="value" data-for="bubbleAmount">0.90</span>
+          </div>
+          <input id="bubbleAmount" type="range" min="0" max="2" step="0.01" value="0.90" />
+          <div class="slider-row">
+            <label class="label" for="bubbleRadius">Radius</label>
+            <span class="value" data-for="bubbleRadius">0.36</span>
+          </div>
+          <input id="bubbleRadius" type="range" min="0.08" max="0.8" step="0.01" value="0.36" />
+          <div class="slider-row">
+            <label class="label" for="bubbleSpeed">Speed</label>
+            <span class="value" data-for="bubbleSpeed">0.55</span>
+          </div>
+          <input id="bubbleSpeed" type="range" min="0" max="2.5" step="0.01" value="0.55" />
+          <div class="slider-row">
+            <label class="label" for="bubbleScale">Letter scale</label>
+            <span class="value" data-for="bubbleScale">1.00</span>
+          </div>
+          <input id="bubbleScale" type="range" min="0" max="2" step="0.01" value="1" />
         </div>
 
         <label class="toggle">

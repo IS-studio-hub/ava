@@ -64,6 +64,11 @@ const DEFAULTS = {
   animRipple: false,
   rippleAmount: 0.25,
   rippleRadius: 0.28,
+  animBubble: false,
+  bubbleAmount: 0.9,
+  bubbleRadius: 0.36,
+  bubbleSpeed: 0.55,
+  bubbleScale: 1,
   autoMorph: false,
   followPointer: false,
   organic: false,
@@ -505,7 +510,8 @@ export class LetterFieldEngine {
       p.animPointerSpin ||
       p.animPulse ||
       p.animTwinkle ||
-      p.animRipple
+      p.animRipple ||
+      p.animBubble
     );
   }
 
@@ -556,6 +562,18 @@ export class LetterFieldEngine {
     const ptrX = this.pointer.x;
     const ptrY = this.pointer.y;
     const ptrAngle = this.pointer.angle;
+
+    let bubbleX = 0;
+    let bubbleY = 0;
+    if (params.animBubble) {
+      const bt = t * (params.bubbleSpeed || 0.55);
+      bubbleX = Math.sin(bt * 0.62) * 0.18 + Math.sin(bt * 0.27 + 1.4) * 0.14;
+      bubbleY = Math.cos(bt * 0.51) * 0.16 + Math.sin(bt * 0.33 + 0.6) * 0.12;
+      if (this.pointer.active) {
+        bubbleX += (ptrX - bubbleX) * 0.72;
+        bubbleY += (ptrY - bubbleY) * 0.72;
+      }
+    }
 
     ctx.imageSmoothingEnabled = true;
     const samples = this._samples;
@@ -634,6 +652,28 @@ export class LetterFieldEngine {
         ny += (dy / dist) * push;
       }
 
+      let bubblePersp = 1;
+      if (params.animBubble) {
+        const dx = homeX - bubbleX;
+        const dy = homeY - bubbleY;
+        const dist = Math.hypot(dx, dy) + 1e-5;
+        const R = Math.max(0.06, params.bubbleRadius || 0.36);
+        const u = dist / R;
+        if (u < 1.45) {
+          const sphere = u < 1 ? Math.sqrt(Math.max(0, 1 - u * u)) : 0;
+          const rim = u < 1 ? 1 : Math.exp(-((u - 1) * 3.2) ** 2);
+          const z = sphere * rim;
+          const amt = params.bubbleAmount || 0;
+          const cam = 1.2;
+          bubblePersp = cam / Math.max(0.22, cam - z * amt);
+          const ox = nx - homeX;
+          const oy = ny - homeY;
+          nx = bubbleX + dx * bubblePersp + ox;
+          ny = bubbleY + dy * bubblePersp + oy;
+          angle += (Math.atan2(dy, dx) + Math.PI / 2) * z * amt * 0.9;
+        }
+      }
+
       if (params.animPointerSpin) {
         const toPtr = Math.atan2(ptrY - homeY, ptrX - homeX);
         angle += toPtr * (params.pointerSpinAmount || 1) * 0.35;
@@ -674,6 +714,10 @@ export class LetterFieldEngine {
         const pt = t * (params.pulseSpeed || 1.2);
         const breathe = Math.sin(pt + sm.i * 0.2 + sm.j * 0.15);
         glyphPx *= 1 + breathe * (params.pulseAmount || 0) * 0.35;
+      }
+
+      if (bubblePersp !== 1) {
+        glyphPx *= 1 + (bubblePersp - 1) * (params.bubbleScale ?? 1);
       }
 
       const nz = 0.7 + shapeMix * 0.35;
@@ -739,12 +783,13 @@ export class LetterFieldEngine {
       "waveAmount", "waveSpeed", "waveScale", "driftAmount", "driftSpeed",
       "shakeAmount", "shakeSpeed", "pointerSpinAmount", "pointerSpinLag",
       "pulseAmount", "pulseSpeed", "twinkleAmount", "twinkleSpeed",
-      "rippleAmount", "rippleRadius", "wordMerge", "imageThreshold",
+      "rippleAmount", "rippleRadius", "bubbleAmount", "bubbleRadius",
+      "bubbleSpeed", "bubbleScale", "wordMerge", "imageThreshold",
     ]);
     const boolKeys = new Set([
       "filledGlyphs", "autoMorph", "followPointer", "organic",
       "animWave", "animDrift", "animShake", "animPointerSpin",
-      "animPulse", "animTwinkle", "animRipple", "imageInvert",
+      "animPulse", "animTwinkle", "animRipple", "animBubble", "imageInvert",
     ]);
 
     if (q.has("letter")) out.letter = q.get("letter").slice(0, 1).toUpperCase() || "G";

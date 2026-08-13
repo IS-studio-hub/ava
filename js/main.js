@@ -99,6 +99,10 @@ const SLIDERS = [
   "twinkleSpeed",
   "rippleAmount",
   "rippleRadius",
+  "bubbleAmount",
+  "bubbleRadius",
+  "bubbleSpeed",
+  "bubbleScale",
   "imageThreshold",
 ];
 
@@ -114,6 +118,7 @@ const CHECKS = [
   "animPulse",
   "animTwinkle",
   "animRipple",
+  "animBubble",
   "imageInvert",
 ];
 const SELECTS = ["fontFamily", "layout", "theme"];
