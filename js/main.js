@@ -287,14 +287,46 @@ function bindStudio(engine) {
   let lastWord = "";
   let usageUser = null;
 
+  function planExhausted() {
+    return Boolean(usageUser && Number(usageUser.usesRemaining) === 0);
+  }
+
+  function lockWordField() {
+    if (!wordInput) return;
+    const locked = planExhausted();
+    wordInput.readOnly = locked;
+    wordInput.classList.toggle("is-locked", locked);
+    wordInput.setAttribute("aria-disabled", locked ? "true" : "false");
+    if (locked) {
+      wordInput.placeholder = "Increase your plan to type a word";
+      if (wordHelp) wordHelp.textContent = "Word is locked. Please increase your plan to keep creating.";
+    } else if (wordHelp) {
+      const hebrew = currentScript() === "hebrew";
+      wordInput.placeholder = hebrew ? "למשל שלום" : "e.g. AVA";
+      wordHelp.textContent = hebrew
+        ? "Type a Hebrew word. Each big letter is built from that same letter. Leave empty for a single letter."
+        : "Type a word to form it from small letters (each big letter uses its own lowercase). Leave empty for a single letter.";
+    }
+  }
+
+  function guardLockedWord(e) {
+    if (!planExhausted()) return false;
+    e?.preventDefault?.();
+    wordInput?.blur?.();
+    showPlanLimitDialog();
+    return true;
+  }
+
   function renderUsage(user, { prompt = false } = {}) {
     usageUser = user || usageUser;
     const el = $("#usageStatus");
-    if (!el) return;
-    el.textContent = usageUser
-      ? `${usageLabel(usageUser)}${usageUser.usesRemaining === 0 ? " · please increase your plan" : ""}`
-      : "";
-    if (prompt && usageUser && usageUser.usesRemaining === 0) showPlanLimitDialog();
+    if (el) {
+      el.textContent = usageUser
+        ? `${usageLabel(usageUser)}${usageUser.usesRemaining === 0 ? " · please increase your plan" : ""}`
+        : "";
+    }
+    lockWordField();
+    if (prompt && planExhausted()) showPlanLimitDialog();
   }
 
   async function consumeStudioUse(kind) {
@@ -335,13 +367,8 @@ function bindStudio(engine) {
     }
     if (wordInput) {
       wordInput.dir = hebrew ? "rtl" : "ltr";
-      wordInput.placeholder = hebrew ? "למשל שלום" : "e.g. AVA";
     }
-    if (wordHelp) {
-      wordHelp.textContent = hebrew
-        ? "Type a Hebrew word. Each big letter is built from that same letter. Leave empty for a single letter."
-        : "Type a word to form it from small letters (each big letter uses its own lowercase). Leave empty for a single letter.";
-    }
+    lockWordField();
   }
 
   function renderPresets() {
@@ -445,6 +472,7 @@ function bindStudio(engine) {
   letterInput.addEventListener("focus", () => letterInput.select());
 
   async function commitWordUse() {
+    if (planExhausted()) return;
     const next = normalizeWord(wordInput.value || "", currentScript());
     if (ignoreUsage || next === lastWord) return;
     if (!next) {
@@ -455,19 +483,40 @@ function bindStudio(engine) {
     if (ok) lastWord = next;
   }
 
+  wordInput.addEventListener("pointerdown", (e) => {
+    if (planExhausted()) {
+      e.preventDefault();
+      showPlanLimitDialog();
+    }
+  });
   wordInput.addEventListener("input", () => {
+    if (guardLockedWord()) {
+      wordInput.value = lastWord;
+      ignoreUsage = true;
+      syncWord();
+      ignoreUsage = false;
+      return;
+    }
     syncWord();
   });
   wordInput.addEventListener("blur", () => {
     commitWordUse();
   });
   wordInput.addEventListener("keydown", (e) => {
+    if (planExhausted()) {
+      e.preventDefault();
+      showPlanLimitDialog();
+      return;
+    }
     if (e.key === "Enter") {
       e.preventDefault();
       wordInput.blur();
     }
   });
-  wordInput.addEventListener("focus", () => wordInput.select());
+  wordInput.addEventListener("focus", (e) => {
+    if (guardLockedWord(e)) return;
+    wordInput.select();
+  });
 
   btnPickImage?.addEventListener("click", () => imageInput?.click());
   imageInput?.addEventListener("change", async () => {

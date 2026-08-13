@@ -261,6 +261,13 @@ body {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+.text-input.is-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #0c0c0c;
+  color: var(--muted);
+}
+
 .color-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
