@@ -282,6 +282,7 @@ function bindStudio(engine) {
   const imagePreview = $("#imagePreview");
   const btnPickImage = $("#btnPickImage");
   const btnClearImage = $("#btnClearImage");
+  const imageHelp = $("#imageHelp");
   let ignoreUsage = true;
   let lastLetter = "";
   let lastWord = "";
@@ -289,6 +290,22 @@ function bindStudio(engine) {
 
   function planExhausted() {
     return Boolean(usageUser && Number(usageUser.usesRemaining) === 0);
+  }
+
+  function lockImageUpload() {
+    const locked = planExhausted();
+    if (btnPickImage) {
+      btnPickImage.disabled = locked;
+      btnPickImage.classList.toggle("is-locked", locked);
+      btnPickImage.setAttribute("aria-disabled", locked ? "true" : "false");
+      btnPickImage.textContent = locked ? "Upload locked" : "Upload image";
+    }
+    if (imageInput) imageInput.disabled = locked;
+    if (imageHelp) {
+      imageHelp.textContent = locked
+        ? "Image upload is locked. Please increase your plan to keep creating."
+        : "Form the photo with random small letters. Shape size, weight, softness, and letter scale work the same as text. Image overrides letter/word until cleared.";
+    }
   }
 
   function lockWordField() {
@@ -326,6 +343,7 @@ function bindStudio(engine) {
         : "";
     }
     lockWordField();
+    lockImageUpload();
     if (prompt && planExhausted()) showPlanLimitDialog();
   }
 
@@ -518,10 +536,22 @@ function bindStudio(engine) {
     wordInput.select();
   });
 
-  btnPickImage?.addEventListener("click", () => imageInput?.click());
+  btnPickImage?.addEventListener("click", (e) => {
+    if (planExhausted()) {
+      e.preventDefault();
+      showPlanLimitDialog();
+      return;
+    }
+    imageInput?.click();
+  });
   imageInput?.addEventListener("change", async () => {
     const file = imageInput.files?.[0];
     if (!file) return;
+    if (planExhausted()) {
+      imageInput.value = "";
+      showPlanLimitDialog();
+      return;
+    }
     try {
       const ok = await consumeStudioUse("image");
       if (!ok) return;

@@ -261,9 +261,13 @@ body {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.text-input.is-locked {
+.text-input.is-locked,
+.btn.is-locked {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.text-input.is-locked {
   background: #0c0c0c;
   color: var(--muted);
 }
