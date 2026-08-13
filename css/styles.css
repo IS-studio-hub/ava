@@ -161,7 +161,7 @@ body {
   top: 0.75rem;
   left: 0.85rem;
   z-index: 2;
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: 0.4rem;
   padding: 0.28rem 0.55rem;
@@ -171,6 +171,10 @@ body {
   font-size: 0.68rem;
   letter-spacing: 0.12em;
   font-family: var(--font-ui);
+}
+
+.stage__rec:not([hidden]) {
+  display: inline-flex;
 }
 
 .stage__rec::before {
@@ -570,13 +574,15 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   background: var(--bg-panel);
 }
 
-.btn.is-recording {
+.btn.is-recording,
+.btn.btn--primary.is-recording {
   background: #b42318;
   border-color: #b42318;
   color: #fff;
 }
 
-.btn.is-recording:hover {
+.btn.is-recording:hover,
+.btn.btn--primary.is-recording:hover {
   background: #9b1c14;
 }
 
