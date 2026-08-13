@@ -8,6 +8,7 @@ import { connectDb } from "./db.js";
 import authRouter from "./auth.js";
 import savesRouter from "./saves.js";
 import billingRouter, { billingWebhook } from "./billing.js";
+import usageRouter from "./usage.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -26,6 +27,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/saves", savesRouter);
 app.use("/api/billing", billingRouter);
+app.use("/api/usage", usageRouter);
 
 app.use(express.static(root));
 

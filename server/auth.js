@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { ObjectId } from "mongodb";
 import { getDb } from "./db.js";
 import { sendVerificationEmail } from "./mail.js";
+import { currentPeriodStart, ensureUsagePeriod, usageSnapshot } from "./plans.js";
 
 const router = Router();
 const COOKIE = "ava_token";
@@ -15,13 +16,17 @@ function jwtSecret() {
   return process.env.JWT_SECRET || "dev-only-secret";
 }
 
-function publicUser(doc) {
+export function publicUser(doc) {
+  const usage = usageSnapshot(doc || {});
   return {
     id: String(doc._id),
     name: doc.name,
     email: doc.email,
-    plan: doc.plan || "free",
+    plan: usage.plan,
     planStatus: doc.planStatus || "active",
+    uses: usage.uses,
+    useLimit: usage.useLimit,
+    usesRemaining: usage.usesRemaining,
     createdAt: doc.createdAt,
   };
 }
@@ -152,6 +157,8 @@ router.post("/verify", async (req, res) => {
       passwordHash: pending.passwordHash,
       plan: "free",
       planStatus: "active",
+      uses: 0,
+      usesPeriodStart: currentPeriodStart(now),
       emailVerifiedAt: now,
       createdAt: now,
       updatedAt: now,
@@ -208,8 +215,17 @@ router.post("/signout", (_req, res) => {
   res.json({ ok: true });
 });
 
-router.get("/me", requireAuth, (req, res) => {
-  res.json({ user: req.user });
+router.get("/me", requireAuth, async (req, res) => {
+  try {
+    const db = getDb();
+    let doc = await db.collection("users").findOne({ _id: new ObjectId(req.user.id) });
+    if (!doc) return res.status(401).json({ error: "User not found" });
+    doc = await ensureUsagePeriod(db, doc);
+    res.json({ user: publicUser(doc) });
+  } catch (err) {
+    console.error("me", err);
+    res.status(500).json({ error: "Could not load account" });
+  }
 });
 
 router.patch("/me", requireAuth, async (req, res) => {

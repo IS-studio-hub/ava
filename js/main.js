@@ -1,6 +1,7 @@
 import { LetterFieldEngine } from "./engine.js";
 import { fetchMe, signin, signout, signup } from "./auth.js";
 import { createSave, getSave } from "./saves.js";
+import { consumeUsage, usageLabel } from "./usage.js";
 import {
   alphabetFor,
   detectScript,
@@ -280,6 +281,39 @@ function bindStudio(engine) {
   const imagePreview = $("#imagePreview");
   const btnPickImage = $("#btnPickImage");
   const btnClearImage = $("#btnClearImage");
+  let ignoreUsage = true;
+  let lastLetter = "";
+  let lastWord = "";
+  let wordTimer = 0;
+  let usageUser = null;
+
+  function renderUsage(user) {
+    usageUser = user || usageUser;
+    const el = $("#usageStatus");
+    if (!el) return;
+    el.textContent = usageUser
+      ? `${usageLabel(usageUser)}${usageUser.usesRemaining === 0 ? " · switch plans in Account" : ""}`
+      : "";
+  }
+
+  async function consumeStudioUse(kind) {
+    if (ignoreUsage) return true;
+    const user = usageUser || (await fetchMe());
+    if (!user) return true;
+    try {
+      const data = await consumeUsage(kind);
+      renderUsage(data.user || data.usage);
+      return true;
+    } catch (err) {
+      const status = $("#usageStatus") || $("#saveStatus");
+      if (status) {
+        status.textContent =
+          err.message || "Use limit reached. Switch plans on your account page.";
+      }
+      if (err.data?.user) renderUsage(err.data.user);
+      return false;
+    }
+  }
 
   function currentScript() {
     return normalizeScript(engine.params.script);
@@ -312,11 +346,18 @@ function bindStudio(engine) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = ch;
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
+        if (ch === lastLetter && !wordInput.value && !engine.params.imageSrc) return;
+        const ok = await consumeStudioUse("letter");
+        if (!ok) return;
         letterInput.value = ch;
         wordInput.value = "";
+        lastLetter = ch;
+        lastWord = "";
+        ignoreUsage = true;
         syncLetter();
         syncWord();
+        ignoreUsage = false;
       });
       presets.appendChild(btn);
     });
@@ -334,10 +375,14 @@ function bindStudio(engine) {
     engine.setParams(patch);
     letterInput.value = engine.params.letter;
     wordInput.value = engine.params.word || "";
+    lastLetter = letterInput.value;
+    lastWord = wordInput.value || "";
     applyScriptUI(script);
     renderPresets();
+    ignoreUsage = true;
     syncLetter();
     syncWord();
+    ignoreUsage = false;
   }
 
   function markPreset() {
@@ -384,9 +429,42 @@ function bindStudio(engine) {
   $("#scriptLatin")?.addEventListener("click", () => setScript("latin"));
   $("#scriptHebrew")?.addEventListener("click", () => setScript("hebrew"));
 
-  letterInput.addEventListener("input", syncLetter);
+  letterInput.addEventListener("input", async () => {
+    const script = currentScript();
+    const next = normalizeLetter(letterInput.value || defaultLetter(script), script);
+    if (ignoreUsage || next === lastLetter) {
+      syncLetter();
+      return;
+    }
+    const ok = await consumeStudioUse("letter");
+    if (!ok) {
+      letterInput.value = lastLetter;
+      syncLetter();
+      return;
+    }
+    lastLetter = next;
+    syncLetter();
+  });
   letterInput.addEventListener("focus", () => letterInput.select());
-  wordInput.addEventListener("input", syncWord);
+  wordInput.addEventListener("input", () => {
+    syncWord();
+    clearTimeout(wordTimer);
+    wordTimer = setTimeout(async () => {
+      const next = normalizeWord(wordInput.value || "", currentScript());
+      if (ignoreUsage || next === lastWord) return;
+      if (!next) {
+        lastWord = "";
+        return;
+      }
+      const ok = await consumeStudioUse("word");
+      if (!ok) {
+        wordInput.value = lastWord;
+        syncWord();
+        return;
+      }
+      lastWord = next;
+    }, 700);
+  });
   wordInput.addEventListener("focus", () => wordInput.select());
 
   btnPickImage?.addEventListener("click", () => imageInput?.click());
@@ -394,6 +472,8 @@ function bindStudio(engine) {
     const file = imageInput.files?.[0];
     if (!file) return;
     try {
+      const ok = await consumeStudioUse("image");
+      if (!ok) return;
       const src = await compressImageFile(file);
       engine.setParams({ imageSrc: src });
       syncImagePreview(src);
@@ -489,6 +569,7 @@ function bindStudio(engine) {
   });
 
   $("#btnReset").addEventListener("click", () => {
+    ignoreUsage = true;
     setScript(defaults.script || "latin");
     Object.entries(defaults).forEach(([key, value]) => {
       if (key === "particle" || key === "script") return;
@@ -511,6 +592,9 @@ function bindStudio(engine) {
     syncImagePreview("");
     syncLetter();
     syncWord();
+    lastLetter = letterInput.value;
+    lastWord = wordInput.value || "";
+    ignoreUsage = false;
   });
 
   $("#btnPause").addEventListener("click", () => {
@@ -552,7 +636,14 @@ function bindStudio(engine) {
   });
 
   bindPointer(engine);
-  loadSaveFromQuery(engine);
+  Promise.resolve(loadSaveFromQuery(engine)).finally(() => {
+    lastLetter = letterInput.value;
+    lastWord = wordInput.value || "";
+    ignoreUsage = false;
+    fetchMe().then((user) => {
+      if (user) renderUsage(user);
+    });
+  });
 }
 
 async function loadSaveFromQuery(engine) {

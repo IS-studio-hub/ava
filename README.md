@@ -35,7 +35,7 @@ Never commit `.env`.
 |---|---|
 | `/` | Homepage — sign in/up, how to use, plans |
 | `/studio.html` | Letter Field studio |
-| `/account.html` | Profile, plan, password, billing |
+| `/account.html` | Profile, plan switcher, monthly uses, password, billing |
 | `/library.html` | Saved pieces, embed + video download |
 | `/embed.html?id=` | Public embed (stops if the save is deleted) |
 | `/verify.html?token=` | Email verification |

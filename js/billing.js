@@ -49,3 +49,9 @@ export async function confirmCheckout(sessionId) {
     body: { sessionId },
   });
 }
+
+export async function switchPlan(plan) {
+  return billingRequest("/api/billing/switch", {
+    body: { plan, returnTo: returnTo() },
+  });
+}

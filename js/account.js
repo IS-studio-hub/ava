@@ -6,7 +6,8 @@ import {
   updatePassword,
   updateProfile,
 } from "./auth.js";
-import { confirmCheckout, createCheckout, createPortal } from "./billing.js";
+import { confirmCheckout, createPortal, switchPlan } from "./billing.js";
+import { usageLabel } from "./usage.js";
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -89,7 +90,7 @@ function renderUser() {
 
   if (gate) gate.hidden = true;
   if (grid) grid.hidden = false;
-  if (lead) lead.textContent = "Your profile, plan, and password.";
+  if (lead) lead.textContent = "Your profile, plan, uses, and password.";
   if (btn) {
     btn.hidden = false;
     btn.textContent = "Sign out";
@@ -111,26 +112,39 @@ function renderUser() {
 
   const plan = currentUser.plan || "free";
   const status = currentUser.planStatus || "active";
-  if ($("#accountPlan")) $("#accountPlan").textContent = planLabel(plan);
+  if ($("#accountUsage")) $("#accountUsage").textContent = usageLabel(currentUser);
   if ($("#accountPlanHelp")) {
     $("#accountPlanHelp").textContent =
       plan === "free"
-        ? "You're on Free. Upgrade anytime for 4K export and commercial use."
-        : `Status: ${status}. Manage billing to change or cancel your plan.`;
+        ? `You're on Free (${status}). Letter, word, and image each count as one monthly use.`
+        : `You're on ${planLabel(plan)} (${status}). Letter, word, and image each count as one monthly use.`;
   }
-  const upgrade = $("#btnUpgradePro");
+  document.querySelectorAll("[data-account-plan]").forEach((card) => {
+    const id = card.getAttribute("data-account-plan");
+    const btn = card.querySelector("[data-switch-plan]");
+    const current = id === plan;
+    card.classList.toggle("is-current", current);
+    if (!btn) return;
+    btn.disabled = current;
+    btn.textContent = current ? "Current plan" : `Switch to ${planLabel(id)}`;
+  });
   const billing = $("#btnManageBilling");
-  if (upgrade) upgrade.hidden = plan === "pro" || plan === "business" || plan === "enterprise";
   if (billing) billing.hidden = plan === "free";
 }
 
-async function startCheckout(plan) {
-  setStatus("Opening Stripe checkout…");
+async function choosePlan(plan) {
+  setStatus(plan === "free" ? "Switching to Free…" : `Switching to ${planLabel(plan)}…`);
   try {
-    const data = await createCheckout(plan);
-    if (data?.url) window.location.href = data.url;
+    const data = await switchPlan(plan);
+    if (data?.url) {
+      window.location.href = data.url;
+      return;
+    }
+    if (data?.user) currentUser = data.user;
+    renderUser();
+    setStatus(`You're on ${planLabel(currentUser.plan)}.`, true);
   } catch (err) {
-    setStatus(err.message || "Could not start checkout.");
+    setStatus(err.message || "Could not switch plan.");
   }
 }
 
@@ -178,7 +192,9 @@ function bindForms() {
     }
   });
 
-  $("#btnUpgradePro")?.addEventListener("click", () => startCheckout("pro"));
+  document.querySelectorAll("[data-switch-plan]").forEach((btn) => {
+    btn.addEventListener("click", () => choosePlan(btn.getAttribute("data-switch-plan") || "free"));
+  });
   $("#btnManageBilling")?.addEventListener("click", () => startPortal());
   $("#btnAccountSignOut")?.addEventListener("click", async () => {
     await signout();

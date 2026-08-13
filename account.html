@@ -26,7 +26,7 @@
   <main class="library-main account-main">
     <div class="library-intro">
       <h1>Account</h1>
-      <p class="help" id="accountLead">Your profile, plan, and password.</p>
+      <p class="help" id="accountLead">Your profile, plan, uses, and password.</p>
     </div>
     <p class="library-status" id="accountStatus" aria-live="polite"></p>
 
@@ -53,13 +53,47 @@
         </form>
       </section>
 
-      <section class="account-card">
+      <section class="account-card account-card--plans">
         <h2>Plan</h2>
-        <p class="account-plan" id="accountPlan">Free</p>
-        <p class="help" id="accountPlanHelp">Your current Ava plan.</p>
+        <p class="account-usage" id="accountUsage">Free · 0 / 5 uses this month</p>
+        <p class="help" id="accountPlanHelp">New accounts start on Free. Switch anytime. Letter, word, and image each count as one use.</p>
+        <div class="account-plans home-plans" id="accountPlans">
+          <article class="home-plan" data-account-plan="free">
+            <h3>Free</h3>
+            <p class="home-plan__price">$0 <span>/ forever</span></p>
+            <p class="home-plan__tag">Default plan after signup.</p>
+            <ul>
+              <li>5 letter / word / image uses per month</li>
+              <li>Full studio + library</li>
+              <li>Embed + 720p / web video</li>
+            </ul>
+            <button type="button" class="btn btn--primary" data-switch-plan="free">Switch to Free</button>
+          </article>
+          <article class="home-plan home-plan--featured" data-account-plan="pro">
+            <p class="home-plan__badge">Most used</p>
+            <h3>Pro</h3>
+            <p class="home-plan__price">$19 <span>/ month</span></p>
+            <p class="home-plan__tag">For client and social work.</p>
+            <ul>
+              <li>10 letter / word / image uses per month</li>
+              <li>4K + 1080p video export</li>
+              <li>Commercial use</li>
+            </ul>
+            <button type="button" class="btn btn--primary" data-switch-plan="pro">Switch to Pro</button>
+          </article>
+          <article class="home-plan" data-account-plan="business">
+            <h3>Business</h3>
+            <p class="home-plan__price">$49 <span>/ month</span></p>
+            <p class="home-plan__tag">For studios and small teams.</p>
+            <ul>
+              <li>20 letter / word / image uses per month</li>
+              <li>Everything in Pro</li>
+              <li>Priority support</li>
+            </ul>
+            <button type="button" class="btn btn--ghost" data-switch-plan="business">Switch to Business</button>
+          </article>
+        </div>
         <div class="account-card__actions">
-          <a class="btn btn--ghost" href="index.html#plans">See plans</a>
-          <button type="button" class="btn btn--primary" id="btnUpgradePro">Upgrade to Pro</button>
           <button type="button" class="btn btn--ghost" id="btnManageBilling">Manage billing</button>
         </div>
       </section>

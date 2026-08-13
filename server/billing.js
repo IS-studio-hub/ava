@@ -2,7 +2,8 @@ import Stripe from "stripe";
 import { Router } from "express";
 import { ObjectId } from "mongodb";
 import { getDb } from "./db.js";
-import { requireAuth } from "./auth.js";
+import { publicUser, requireAuth } from "./auth.js";
+import { PLAN_LIMITS } from "./plans.js";
 
 const router = Router();
 
@@ -79,10 +80,10 @@ async function syncSubscription(userId, subscription, extra = {}) {
 router.get("/plans", (_req, res) => {
   res.json({
     plans: [
-      { id: "free", name: "Free", amount: 0, interval: null },
-      { id: "pro", name: "Pro", amount: 1900, interval: "month", configured: Boolean(priceIdFor("pro")) },
-      { id: "business", name: "Business", amount: 4900, interval: "month", configured: Boolean(priceIdFor("business")) },
-      { id: "enterprise", name: "Enterprise", amount: null, interval: null },
+      { id: "free", name: "Free", amount: 0, interval: null, uses: PLAN_LIMITS.free },
+      { id: "pro", name: "Pro", amount: 1900, interval: "month", uses: PLAN_LIMITS.pro, configured: Boolean(priceIdFor("pro")) },
+      { id: "business", name: "Business", amount: 4900, interval: "month", uses: PLAN_LIMITS.business, configured: Boolean(priceIdFor("business")) },
+      { id: "enterprise", name: "Enterprise", amount: null, interval: null, uses: PLAN_LIMITS.enterprise },
     ],
   });
 });
@@ -171,17 +172,118 @@ router.post("/confirm", requireAuth, async (req, res) => {
     const doc = await loadUserDoc(req.user.id);
     res.json({
       ok: true,
-      user: {
-        id: req.user.id,
-        name: doc?.name,
-        email: doc?.email,
-        plan: doc?.plan || "free",
-        planStatus: doc?.planStatus || "active",
-      },
+      user: publicUser(doc),
     });
   } catch (err) {
     console.error("billing confirm", err);
     res.status(500).json({ error: err.message || "Could not confirm payment" });
+  }
+});
+
+router.post("/switch", requireAuth, async (req, res) => {
+  try {
+    const plan = String(req.body?.plan || "").toLowerCase();
+    if (!["free", "pro", "business"].includes(plan)) {
+      return res.status(400).json({ error: "Choose Free, Pro, or Business" });
+    }
+
+    const doc = await loadUserDoc(req.user.id);
+    if (!doc) return res.status(401).json({ error: "User not found" });
+    const current = doc.plan || "free";
+    if (current === plan && (plan === "free" || doc.planStatus === "active" || doc.planStatus === "trialing")) {
+      return res.json({ user: publicUser(doc), switched: true });
+    }
+
+    const db = getDb();
+
+    if (plan === "free") {
+      if (doc.stripeSubscriptionId) {
+        try {
+          await stripeClient().subscriptions.cancel(doc.stripeSubscriptionId);
+        } catch (err) {
+          if (err?.code !== "resource_missing") throw err;
+        }
+      }
+      await db.collection("users").updateOne(
+        { _id: doc._id },
+        {
+          $set: {
+            plan: "free",
+            planStatus: "active",
+            stripeSubscriptionId: "",
+            stripePriceId: "",
+            updatedAt: new Date(),
+          },
+        }
+      );
+      const updated = await loadUserDoc(req.user.id);
+      return res.json({ user: publicUser(updated), switched: true });
+    }
+
+    const priceId = priceIdFor(plan);
+    if (!priceId) {
+      return res.status(503).json({ error: "This plan is not configured in Stripe yet." });
+    }
+
+    if (doc.stripeSubscriptionId && doc.stripeCustomerId) {
+      try {
+        const stripe = stripeClient();
+        const sub = await stripe.subscriptions.retrieve(doc.stripeSubscriptionId);
+        const itemId = sub.items?.data?.[0]?.id;
+        if (itemId && ["active", "trialing", "past_due"].includes(sub.status)) {
+          const updatedSub = await stripe.subscriptions.update(doc.stripeSubscriptionId, {
+            items: [{ id: itemId, price: priceId }],
+            proration_behavior: "create_prorations",
+            metadata: { avaUserId: req.user.id, plan },
+          });
+          await syncSubscription(req.user.id, updatedSub, {
+            plan,
+            stripeCustomerId: doc.stripeCustomerId,
+          });
+          const updated = await loadUserDoc(req.user.id);
+          return res.json({ user: publicUser(updated), switched: true });
+        }
+      } catch (err) {
+        console.warn("plan switch update failed, using checkout", err.message);
+      }
+    }
+
+    const stripe = stripeClient();
+    let customerId = doc.stripeCustomerId || "";
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: doc.email,
+        name: doc.name,
+        metadata: { avaUserId: req.user.id },
+      });
+      customerId = customer.id;
+      await db.collection("users").updateOne(
+        { _id: doc._id },
+        { $set: { stripeCustomerId: customerId, updatedAt: new Date() } }
+      );
+    }
+
+    const returnTo = safeReturnTo(req.body?.returnTo);
+    const pageReturn = returnTo.endsWith(".html");
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      client_reference_id: req.user.id,
+      allow_promotion_codes: true,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: pageReturn
+        ? `${returnTo}?billing=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`
+        : `${returnTo}/?billing=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: pageReturn ? `${returnTo}` : `${returnTo}/#plans`,
+      metadata: { avaUserId: req.user.id, plan },
+      subscription_data: {
+        metadata: { avaUserId: req.user.id, plan },
+      },
+    });
+    res.json({ url: session.url, id: session.id });
+  } catch (err) {
+    console.error("billing switch", err);
+    res.status(500).json({ error: err.message || "Could not switch plan" });
   }
 });
 
