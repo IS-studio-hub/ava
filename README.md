@@ -20,7 +20,8 @@ See `.env.example`:
 - `MONGODB_URI` — Atlas connection string (database **`ava`**: `users`, `saves`, `pending_users`)
 - `JWT_SECRET` — session signing secret
 - `APP_URL` — public origin used in verification emails
-- `RESEND_API_KEY` + `MAIL_FROM` — verification email (or SMTP fallback)
+- `MAIL_RELAY_URL` + `MAIL_RELAY_SECRET` — Gmail Apps Script relay (any recipient; see `google-apps-script-relay/`)
+- `RESEND_API_KEY` + `MAIL_FROM` — Resend (test mode only emails the Resend account owner until a domain is verified)
 - `STRIPE_SECRET_KEY` + `STRIPE_PUBLISHABLE_KEY` — Stripe billing
 - `STRIPE_WEBHOOK_SECRET` — webhook signing secret
 - `STRIPE_PRICE_PRO` + `STRIPE_PRICE_BUSINESS` — monthly price IDs

@@ -23,8 +23,29 @@ function resendConfigured() {
   return Boolean(process.env.RESEND_API_KEY);
 }
 
+function relayConfigured() {
+  return Boolean(process.env.MAIL_RELAY_URL && process.env.MAIL_RELAY_SECRET);
+}
+
+function resendFrom() {
+  const from = mailFrom();
+  const email = parseFrom(from).email.toLowerCase();
+  if (email.endsWith("@resend.dev")) return from;
+  return process.env.RESEND_FROM || "Ava <onboarding@resend.dev>";
+}
+
+function parseFrom(from) {
+  const raw = String(from || "").trim();
+  const match = raw.match(/^(.*)<([^>]+)>$/);
+  if (match) {
+    return { name: match[1].trim().replace(/^"|"$/g, "") || "Ava", email: match[2].trim() };
+  }
+  if (raw.includes("@")) return { name: "Ava", email: raw };
+  return { name: "Ava", email: "hello@isexperience.house" };
+}
+
 export function mailReady() {
-  return resendConfigured() || smtpConfigured();
+  return relayConfigured() || resendConfigured() || smtpConfigured();
 }
 
 export function verificationLink(token) {
@@ -73,6 +94,32 @@ This link expires in 24 hours. If you didn’t sign up, you can ignore this emai
   return { subject, text, html };
 }
 
+async function sendWithRelay({ to, subject, text, html }) {
+  const from = parseFrom(mailFrom());
+  const res = await fetch(process.env.MAIL_RELAY_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Ava-Mail-Secret": process.env.MAIL_RELAY_SECRET,
+    },
+    body: JSON.stringify({
+      secret: process.env.MAIL_RELAY_SECRET,
+      to,
+      subject,
+      text,
+      html,
+      from: mailFrom(),
+      fromName: from.name,
+      replyTo: from.email,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data?.error) {
+    throw new Error(data?.error || `Mail relay failed (${res.status})`);
+  }
+  return data;
+}
+
 async function sendWithResend({ to, subject, text, html }) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -81,11 +128,12 @@ async function sendWithResend({ to, subject, text, html }) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: mailFrom(),
+      from: resendFrom(),
       to: [to],
       subject,
       text,
       html,
+      reply_to: parseFrom(mailFrom()).email,
     }),
   });
 
@@ -122,24 +170,30 @@ export async function sendVerificationEmail({ to, name, token }) {
   const { subject, text, html } = buildBodies(name, link);
 
   if (!mailReady()) {
-    console.warn("[ava mail] No RESEND_API_KEY or SMTP configured. Verification link:");
+    console.warn("[ava mail] No mail relay, RESEND_API_KEY, or SMTP configured. Verification link:");
     console.warn(link);
     return { sent: false, link, reason: "Email provider not configured" };
   }
 
-  try {
-    if (resendConfigured()) {
-      await sendWithResend({ to, subject, text, html });
-      console.log(`[ava mail] Verification email sent via Resend to ${to}`);
-      return { sent: true, link, provider: "resend" };
+  const attempts = [];
+  if (relayConfigured()) attempts.push(["relay", sendWithRelay]);
+  if (resendConfigured()) attempts.push(["resend", sendWithResend]);
+  if (smtpConfigured()) attempts.push(["smtp", sendWithSmtp]);
+
+  const errors = [];
+  for (const [provider, send] of attempts) {
+    try {
+      await send({ to, subject, text, html });
+      console.log(`[ava mail] Verification email sent via ${provider} to ${to}`);
+      return { sent: true, link, provider };
+    } catch (err) {
+      const message = err.message || String(err);
+      console.error(`[ava mail] ${provider} failed:`, message);
+      errors.push(`${provider}: ${message}`);
     }
-    await sendWithSmtp({ to, subject, text, html });
-    console.log(`[ava mail] Verification email sent via SMTP to ${to}`);
-    return { sent: true, link, provider: "smtp" };
-  } catch (err) {
-    console.error("[ava mail] send failed:", err.message || err);
-    return { sent: false, link, reason: err.message || "send failed" };
   }
+
+  return { sent: false, link, reason: errors.join(" | ") || "send failed" };
 }
 
 function escapeHtml(value) {
