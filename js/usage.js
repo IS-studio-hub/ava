@@ -39,5 +39,8 @@ export function usageLabel(user) {
   const used = Number(user.uses) || 0;
   const limit = Number(user.useLimit) || 0;
   const plan = user.plan === "pro" ? "Pro" : user.plan === "business" ? "Business" : "Free";
+  if (plan === "Free" || user.usesReset === "lifetime") {
+    return `${plan} · ${used} / ${limit} uses`;
+  }
   return `${plan} · ${used} / ${limit} uses this month`;
 }

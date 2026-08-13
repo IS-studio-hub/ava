@@ -3,7 +3,7 @@ import { Router } from "express";
 import { ObjectId } from "mongodb";
 import { getDb } from "./db.js";
 import { publicUser, requireAuth } from "./auth.js";
-import { PLAN_LIMITS } from "./plans.js";
+import { PLAN_LIMITS, currentPeriodStart } from "./plans.js";
 
 const router = Router();
 
@@ -66,11 +66,19 @@ async function syncSubscription(userId, subscription, extra = {}) {
     "";
   const plan = extra.plan || (active ? planFromPriceId(priceId) : "free");
   const db = getDb();
+  const existing = await db.collection("users").findOne({ _id: new ObjectId(userId) });
+  const nextPlan = active ? plan : "free";
   const $set = {
-    plan: active ? plan : "free",
-    planStatus: active ? status : plan === "free" ? "active" : status,
+    plan: nextPlan,
+    planStatus: active ? status : nextPlan === "free" ? "active" : status,
     updatedAt: new Date(),
   };
+  if (nextPlan === "free") {
+    $set.usesPeriodStart = "lifetime";
+  } else if ((existing?.plan || "free") !== nextPlan || existing?.usesPeriodStart === "lifetime") {
+    $set.uses = 0;
+    $set.usesPeriodStart = currentPeriodStart();
+  }
   if (subscription?.id) $set.stripeSubscriptionId = subscription.id;
   if (priceId) $set.stripePriceId = priceId;
   if (customerId) $set.stripeCustomerId = customerId;
@@ -80,9 +88,9 @@ async function syncSubscription(userId, subscription, extra = {}) {
 router.get("/plans", (_req, res) => {
   res.json({
     plans: [
-      { id: "free", name: "Free", amount: 0, interval: null, uses: PLAN_LIMITS.free },
-      { id: "pro", name: "Pro", amount: 1900, interval: "month", uses: PLAN_LIMITS.pro, configured: Boolean(priceIdFor("pro")) },
-      { id: "business", name: "Business", amount: 4900, interval: "month", uses: PLAN_LIMITS.business, configured: Boolean(priceIdFor("business")) },
+      { id: "free", name: "Free", amount: 0, interval: null, uses: PLAN_LIMITS.free, reset: "lifetime" },
+      { id: "pro", name: "Pro", amount: 1900, interval: "month", uses: PLAN_LIMITS.pro, reset: "month", configured: Boolean(priceIdFor("pro")) },
+      { id: "business", name: "Business", amount: 4900, interval: "month", uses: PLAN_LIMITS.business, reset: "month", configured: Boolean(priceIdFor("business")) },
       { id: "enterprise", name: "Enterprise", amount: null, interval: null, uses: PLAN_LIMITS.enterprise },
     ],
   });
@@ -212,6 +220,7 @@ router.post("/switch", requireAuth, async (req, res) => {
             planStatus: "active",
             stripeSubscriptionId: "",
             stripePriceId: "",
+            usesPeriodStart: "lifetime",
             updatedAt: new Date(),
           },
         }

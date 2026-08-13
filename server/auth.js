@@ -5,7 +5,7 @@ import crypto from "crypto";
 import { ObjectId } from "mongodb";
 import { getDb } from "./db.js";
 import { sendVerificationEmail } from "./mail.js";
-import { currentPeriodStart, ensureUsagePeriod, usageSnapshot } from "./plans.js";
+import { ensureUsagePeriod, usageSnapshot } from "./plans.js";
 
 const router = Router();
 const COOKIE = "ava_token";
@@ -27,6 +27,7 @@ export function publicUser(doc) {
     uses: usage.uses,
     useLimit: usage.useLimit,
     usesRemaining: usage.usesRemaining,
+    usesReset: usage.usesReset,
     createdAt: doc.createdAt,
   };
 }
@@ -158,7 +159,8 @@ router.post("/verify", async (req, res) => {
       plan: "free",
       planStatus: "active",
       uses: 0,
-      usesPeriodStart: currentPeriodStart(now),
+      lifetimeUses: 0,
+      usesPeriodStart: "lifetime",
       emailVerifiedAt: now,
       createdAt: now,
       updatedAt: now,

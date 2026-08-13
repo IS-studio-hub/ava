@@ -24,6 +24,19 @@ export function currentPeriodStart(now = new Date()) {
 export function usageSnapshot(doc = {}) {
   const plan = normalizePlan(doc.plan);
   const limit = planLimit(plan);
+  if (plan === "free") {
+    const uses = Number.isFinite(Number(doc.lifetimeUses))
+      ? Number(doc.lifetimeUses)
+      : Number(doc.uses) || 0;
+    return {
+      plan,
+      uses,
+      useLimit: limit,
+      usesRemaining: Math.max(0, limit - uses),
+      usesPeriodStart: "lifetime",
+      usesReset: "lifetime",
+    };
+  }
   const period = currentPeriodStart();
   const uses = doc.usesPeriodStart === period ? Number(doc.uses) || 0 : 0;
   return {
@@ -32,11 +45,23 @@ export function usageSnapshot(doc = {}) {
     useLimit: limit,
     usesRemaining: Math.max(0, limit - uses),
     usesPeriodStart: period,
+    usesReset: "month",
   };
 }
 
 export async function ensureUsagePeriod(db, doc) {
   if (!doc?._id) return doc;
+  const plan = normalizePlan(doc.plan);
+  if (plan === "free") {
+    const lifetime = Number(doc.lifetimeUses);
+    if (Number.isFinite(lifetime) && doc.usesPeriodStart === "lifetime") return doc;
+    const uses = Number.isFinite(lifetime) ? lifetime : Number(doc.uses) || 0;
+    await db.collection("users").updateOne(
+      { _id: doc._id },
+      { $set: { lifetimeUses: uses, uses, usesPeriodStart: "lifetime", updatedAt: new Date() } }
+    );
+    return { ...doc, lifetimeUses: uses, uses, usesPeriodStart: "lifetime" };
+  }
   const period = currentPeriodStart();
   if (doc.usesPeriodStart === period) return doc;
   await db.collection("users").updateOne(

@@ -2,6 +2,7 @@ import { LetterFieldEngine } from "./engine.js";
 import { fetchMe, signin, signout, signup } from "./auth.js";
 import { createSave, getSave } from "./saves.js";
 import { consumeUsage, usageLabel } from "./usage.js";
+import { bindPlanLimitDialog, showPlanLimitDialog } from "./planLimit.js";
 import {
   alphabetFor,
   detectScript,
@@ -286,19 +287,24 @@ function bindStudio(engine) {
   let lastWord = "";
   let usageUser = null;
 
-  function renderUsage(user) {
+  function renderUsage(user, { prompt = false } = {}) {
     usageUser = user || usageUser;
     const el = $("#usageStatus");
     if (!el) return;
     el.textContent = usageUser
-      ? `${usageLabel(usageUser)}${usageUser.usesRemaining === 0 ? " · switch plans in Account" : ""}`
+      ? `${usageLabel(usageUser)}${usageUser.usesRemaining === 0 ? " · please increase your plan" : ""}`
       : "";
+    if (prompt && usageUser && usageUser.usesRemaining === 0) showPlanLimitDialog();
   }
 
   async function consumeStudioUse(kind) {
     if (ignoreUsage) return true;
     const user = usageUser || (await fetchMe());
     if (!user) return true;
+    if (Number(user.usesRemaining) === 0) {
+      renderUsage(user, { prompt: true });
+      return false;
+    }
     try {
       const data = await consumeUsage(kind);
       renderUsage(data.user || data.usage);
@@ -306,10 +312,10 @@ function bindStudio(engine) {
     } catch (err) {
       const status = $("#usageStatus") || $("#saveStatus");
       if (status) {
-        status.textContent =
-          err.message || "Use limit reached. Switch plans on your account page.";
+        status.textContent = err.message || "Please increase your plan.";
       }
-      if (err.data?.user) renderUsage(err.data.user);
+      if (err.data?.user) renderUsage(err.data.user, { prompt: true });
+      else if (err.status === 402) showPlanLimitDialog();
       return false;
     }
   }
@@ -631,13 +637,14 @@ function bindStudio(engine) {
     document.body.classList.toggle("panel-open");
   });
 
+  bindPlanLimitDialog();
   bindPointer(engine);
   Promise.resolve(loadSaveFromQuery(engine)).finally(() => {
     lastLetter = letterInput.value;
     lastWord = wordInput.value || "";
     ignoreUsage = false;
     fetchMe().then((user) => {
-      if (user) renderUsage(user);
+      if (user) renderUsage(user, { prompt: Number(user.usesRemaining) === 0 });
     });
   });
 }

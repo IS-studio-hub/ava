@@ -33,25 +33,30 @@ router.post("/consume", requireAuth, async (req, res) => {
     doc = await ensureUsagePeriod(db, doc);
     const snap = usageSnapshot(doc);
     if (snap.usesRemaining <= 0) {
+      const label = snap.plan === "pro" ? "Pro" : snap.plan === "business" ? "Business" : "Free";
+      const windowText = snap.usesReset === "lifetime" ? "" : " this month";
       return res.status(402).json({
-        error: `You've used all ${snap.useLimit} ${snap.plan === "free" ? "Free" : snap.plan} uses this month. Switch plans on your account page.`,
+        error: `Please increase your plan. You've used all ${snap.useLimit} ${label} uses${windowText}.`,
         usage: snap,
         user: publicUser(doc),
       });
     }
 
-    await db.collection("users").updateOne(
-      { _id: doc._id },
-      {
-        $inc: { uses: 1 },
-        $set: {
-          lastUseKind: kind,
-          usesPeriodStart: snap.usesPeriodStart,
-          updatedAt: new Date(),
-        },
-      }
-    );
-    const next = { ...doc, uses: snap.uses + 1, usesPeriodStart: snap.usesPeriodStart };
+    const nextUses = snap.uses + 1;
+    const $set = {
+      lastUseKind: kind,
+      usesPeriodStart: snap.usesPeriodStart,
+      uses: nextUses,
+      updatedAt: new Date(),
+    };
+    if (snap.plan === "free") $set.lifetimeUses = nextUses;
+    await db.collection("users").updateOne({ _id: doc._id }, { $set });
+    const next = {
+      ...doc,
+      uses: nextUses,
+      lifetimeUses: snap.plan === "free" ? nextUses : doc.lifetimeUses,
+      usesPeriodStart: snap.usesPeriodStart,
+    };
     res.json({ user: publicUser(next), usage: usageSnapshot(next) });
   } catch (err) {
     console.error("usage consume", err);

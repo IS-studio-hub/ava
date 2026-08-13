@@ -8,6 +8,7 @@ import {
 } from "./auth.js";
 import { confirmCheckout, createPortal, switchPlan } from "./billing.js";
 import { usageLabel } from "./usage.js";
+import { bindPlanLimitDialog, showPlanLimitDialog } from "./planLimit.js";
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -116,8 +117,8 @@ function renderUser() {
   if ($("#accountPlanHelp")) {
     $("#accountPlanHelp").textContent =
       plan === "free"
-        ? `You're on Free (${status}). Letter, word, and image each count as one monthly use.`
-        : `You're on ${planLabel(plan)} (${status}). Letter, word, and image each count as one monthly use.`;
+        ? `You're on Free (${status}). 5 letter / word / image uses, one time.`
+        : `You're on ${planLabel(plan)} (${status}). Letter, word, and image uses reset each month.`;
   }
   document.querySelectorAll("[data-account-plan]").forEach((card) => {
     const id = card.getAttribute("data-account-plan");
@@ -258,6 +259,7 @@ function bindAuth() {
 async function main() {
   bindAuth();
   bindForms();
+  bindPlanLimitDialog();
   currentUser = await fetchMe();
 
   const params = new URLSearchParams(window.location.search);
@@ -283,6 +285,7 @@ async function main() {
 
   renderUser();
   if (!currentUser) openAuth("signin");
+  else if (Number(currentUser.usesRemaining) === 0) showPlanLimitDialog();
 }
 
 main();

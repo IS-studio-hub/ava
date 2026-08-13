@@ -55,15 +55,15 @@
 
       <section class="account-card account-card--plans">
         <h2>Plan</h2>
-        <p class="account-usage" id="accountUsage">Free · 0 / 5 uses this month</p>
-        <p class="help" id="accountPlanHelp">New accounts start on Free. Switch anytime. Letter, word, and image each count as one use.</p>
+        <p class="account-usage" id="accountUsage">Free · 0 / 5 uses</p>
+        <p class="help" id="accountPlanHelp">New accounts start on Free with 5 one-time uses. Pro and Business renew monthly.</p>
         <div class="account-plans home-plans" id="accountPlans">
           <article class="home-plan" data-account-plan="free">
             <h3>Free</h3>
             <p class="home-plan__price">$0 <span>/ forever</span></p>
             <p class="home-plan__tag">Default plan after signup.</p>
             <ul>
-              <li>5 letter / word / image uses per month</li>
+              <li>5 letter / word / image uses, one time</li>
               <li>Full studio + library</li>
               <li>Embed + 720p / web video</li>
             </ul>
@@ -124,6 +124,16 @@
       </section>
     </div>
   </main>
+
+  <dialog class="auth-dialog" id="planLimitDialog">
+    <div class="auth-dialog__inner">
+      <h2 class="auth-dialog__title">Please increase your plan</h2>
+      <p class="help">You’ve used all letter, word, and image uses on your current plan. Upgrade below to keep creating.</p>
+      <div class="auth-dialog__actions">
+        <button type="button" class="btn btn--primary" id="planLimitClose">See plans</button>
+      </div>
+    </div>
+  </dialog>
 
   <dialog class="auth-dialog" id="authDialog">
     <div class="auth-dialog__inner">
