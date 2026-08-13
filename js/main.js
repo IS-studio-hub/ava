@@ -284,7 +284,6 @@ function bindStudio(engine) {
   let ignoreUsage = true;
   let lastLetter = "";
   let lastWord = "";
-  let wordTimer = 0;
   let usageUser = null;
 
   function renderUsage(user) {
@@ -432,38 +431,35 @@ function bindStudio(engine) {
   letterInput.addEventListener("input", async () => {
     const script = currentScript();
     const next = normalizeLetter(letterInput.value || defaultLetter(script), script);
-    if (ignoreUsage || next === lastLetter) {
-      syncLetter();
-      return;
-    }
-    const ok = await consumeStudioUse("letter");
-    if (!ok) {
-      letterInput.value = lastLetter;
-      syncLetter();
-      return;
-    }
-    lastLetter = next;
     syncLetter();
+    if (ignoreUsage || next === lastLetter) return;
+    const ok = await consumeStudioUse("letter");
+    if (ok) lastLetter = next;
   });
   letterInput.addEventListener("focus", () => letterInput.select());
+
+  async function commitWordUse() {
+    const next = normalizeWord(wordInput.value || "", currentScript());
+    if (ignoreUsage || next === lastWord) return;
+    if (!next) {
+      lastWord = "";
+      return;
+    }
+    const ok = await consumeStudioUse("word");
+    if (ok) lastWord = next;
+  }
+
   wordInput.addEventListener("input", () => {
     syncWord();
-    clearTimeout(wordTimer);
-    wordTimer = setTimeout(async () => {
-      const next = normalizeWord(wordInput.value || "", currentScript());
-      if (ignoreUsage || next === lastWord) return;
-      if (!next) {
-        lastWord = "";
-        return;
-      }
-      const ok = await consumeStudioUse("word");
-      if (!ok) {
-        wordInput.value = lastWord;
-        syncWord();
-        return;
-      }
-      lastWord = next;
-    }, 700);
+  });
+  wordInput.addEventListener("blur", () => {
+    commitWordUse();
+  });
+  wordInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      wordInput.blur();
+    }
   });
   wordInput.addEventListener("focus", () => wordInput.select());
 

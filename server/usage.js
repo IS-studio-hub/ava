@@ -2,7 +2,7 @@ import { Router } from "express";
 import { ObjectId } from "mongodb";
 import { getDb } from "./db.js";
 import { requireAuth, publicUser } from "./auth.js";
-import { currentPeriodStart, ensureUsagePeriod, planLimit, usageSnapshot } from "./plans.js";
+import { ensureUsagePeriod, usageSnapshot } from "./plans.js";
 
 const router = Router();
 const KINDS = new Set(["letter", "word", "image"]);
@@ -31,25 +31,8 @@ router.post("/consume", requireAuth, async (req, res) => {
     let doc = await db.collection("users").findOne({ _id: new ObjectId(req.user.id) });
     if (!doc) return res.status(404).json({ error: "User not found" });
     doc = await ensureUsagePeriod(db, doc);
-
-    const period = currentPeriodStart();
-    const limit = planLimit(doc.plan);
-    const updated = await db.collection("users").findOneAndUpdate(
-      {
-        _id: doc._id,
-        usesPeriodStart: period,
-        uses: { $lt: limit },
-      },
-      {
-        $inc: { uses: 1 },
-        $set: { lastUseKind: kind, updatedAt: new Date() },
-      },
-      { returnDocument: "after" }
-    );
-
-    const next = updated && updated._id ? updated : updated?.value;
-    if (!next) {
-      const snap = usageSnapshot(doc);
+    const snap = usageSnapshot(doc);
+    if (snap.usesRemaining <= 0) {
       return res.status(402).json({
         error: `You've used all ${snap.useLimit} ${snap.plan === "free" ? "Free" : snap.plan} uses this month. Switch plans on your account page.`,
         usage: snap,
@@ -57,6 +40,18 @@ router.post("/consume", requireAuth, async (req, res) => {
       });
     }
 
+    await db.collection("users").updateOne(
+      { _id: doc._id },
+      {
+        $inc: { uses: 1 },
+        $set: {
+          lastUseKind: kind,
+          usesPeriodStart: snap.usesPeriodStart,
+          updatedAt: new Date(),
+        },
+      }
+    );
+    const next = { ...doc, uses: snap.uses + 1, usesPeriodStart: snap.usesPeriodStart };
     res.json({ user: publicUser(next), usage: usageSnapshot(next) });
   } catch (err) {
     console.error("usage consume", err);

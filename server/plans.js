@@ -16,7 +16,9 @@ export function planLimit(plan) {
 }
 
 export function currentPeriodStart(now = new Date()) {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
 }
 
 export function usageSnapshot(doc = {}) {
