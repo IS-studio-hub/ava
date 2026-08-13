@@ -1,5 +1,8 @@
 import { fetchMe, signin, signout, signup } from "./auth.js";
+import { confirmCheckout, createCheckout, createPortal } from "./billing.js";
 import { LetterFieldEngine } from "./engine.js";
+
+const PENDING_PLAN_KEY = "ava.pendingPlan";
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -35,21 +38,104 @@ function openAuth(mode = "signin") {
   $("#authDialog")?.showModal?.();
 }
 
+function setBillingStatus(text) {
+  const el = $("#billingStatus");
+  if (el) el.textContent = text || "";
+}
+
+function planLabel(plan) {
+  if (plan === "pro") return "Pro";
+  if (plan === "business") return "Business";
+  if (plan === "enterprise") return "Enterprise";
+  return "Free";
+}
+
+function renderPlanButtons() {
+  const plan = currentUser?.plan || "free";
+  document.querySelectorAll("[data-plan-card]").forEach((card) => {
+    const id = card.getAttribute("data-plan-card");
+    const btn = card.querySelector("[data-plan]");
+    if (!btn) return;
+    if (id === plan) {
+      btn.textContent = "Current plan";
+      btn.disabled = true;
+    } else if (id === "free") {
+      btn.textContent = currentUser ? "Open studio" : "Get started";
+      btn.disabled = false;
+    } else if (id === "pro") {
+      btn.textContent = plan === "business" ? "Switch to Pro" : "Start Pro";
+      btn.disabled = false;
+    } else if (id === "business") {
+      btn.textContent = plan === "pro" ? "Upgrade to Business" : "Start Business";
+      btn.disabled = false;
+    }
+  });
+}
+
+async function startCheckout(plan) {
+  setBillingStatus("");
+  if (plan === "enterprise") return;
+  if (plan === "free") {
+    if (!currentUser) {
+      openAuth("signup");
+      return;
+    }
+    window.location.href = "studio.html";
+    return;
+  }
+  if (!currentUser) {
+    try {
+      sessionStorage.setItem(PENDING_PLAN_KEY, plan);
+    } catch {
+      /* ignore */
+    }
+    openAuth("signin");
+    setBillingStatus("Sign in (or create an account) to subscribe.");
+    return;
+  }
+  try {
+    setBillingStatus("Opening Stripe checkout…");
+    const data = await createCheckout(plan);
+    if (data?.url) window.location.href = data.url;
+  } catch (err) {
+    setBillingStatus(err.message || "Could not start checkout.");
+  }
+}
+
+async function startPortal() {
+  if (!currentUser) {
+    openAuth("signin");
+    return;
+  }
+  try {
+    setBillingStatus("Opening billing portal…");
+    const data = await createPortal();
+    if (data?.url) window.location.href = data.url;
+  } catch (err) {
+    setBillingStatus(err.message || "Could not open billing portal.");
+  }
+}
+
 function renderAuthBar() {
   const bar = $("#homeAuthBar");
   if (!bar) return;
   if (currentUser) {
+    const plan = planLabel(currentUser.plan);
     bar.innerHTML = `
       <a class="btn btn--ghost btn--small" href="studio.html">Studio</a>
       <a class="btn btn--ghost btn--small" href="library.html">Library</a>
-      <span class="stage__auth-user" title="${currentUser.email}">${currentUser.name || currentUser.email}</span>
+      <button type="button" class="btn btn--ghost btn--small" id="btnManageBilling">Billing</button>
+      <span class="stage__auth-user" title="${currentUser.email}">${currentUser.name || currentUser.email} · ${plan}</span>
       <button type="button" class="btn btn--ghost btn--small" id="btnHomeSignOut">Sign out</button>
     `;
     $("#btnHomeSignOut")?.addEventListener("click", async () => {
       await signout();
       currentUser = null;
       renderAuthBar();
+      renderPlanButtons();
     });
+    $("#btnManageBilling")?.addEventListener("click", () => startPortal());
+    renderPlanButtons();
     return;
   }
   bar.innerHTML = `
@@ -58,6 +144,7 @@ function renderAuthBar() {
   `;
   $("#btnHomeSignIn")?.addEventListener("click", () => openAuth("signin"));
   $("#btnHomeSignUp")?.addEventListener("click", () => openAuth("signup"));
+  renderPlanButtons();
 }
 
 function bindAuth() {
@@ -67,6 +154,9 @@ function bindAuth() {
   $("#btnHeroStart")?.addEventListener("click", () => openAuth("signup"));
   document.querySelectorAll("[data-auth]").forEach((btn) => {
     btn.addEventListener("click", () => openAuth(btn.getAttribute("data-auth") || "signup"));
+  });
+  document.querySelectorAll("[data-plan]").forEach((btn) => {
+    btn.addEventListener("click", () => startCheckout(btn.getAttribute("data-plan") || "free"));
   });
 
   $("#authForm")?.addEventListener("submit", async (e) => {
@@ -101,6 +191,16 @@ function bindAuth() {
         $("#authDialog")?.close?.();
         form?.reset();
         renderAuthBar();
+        let pending = "";
+        try {
+          pending = sessionStorage.getItem(PENDING_PLAN_KEY) || "";
+          sessionStorage.removeItem(PENDING_PLAN_KEY);
+        } catch {
+          pending = "";
+        }
+        if (pending === "pro" || pending === "business") {
+          await startCheckout(pending);
+        }
       }
     } catch (err) {
       if (errorEl) {
@@ -165,6 +265,26 @@ async function main() {
   currentUser = await fetchMe();
   renderAuthBar();
   startPreview();
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("billing") === "success") {
+    const sessionId = params.get("session_id") || "";
+    if (sessionId && currentUser) {
+      try {
+        const confirmed = await confirmCheckout(sessionId);
+        if (confirmed?.user) currentUser = { ...currentUser, ...confirmed.user };
+      } catch (err) {
+        console.warn("billing confirm", err);
+      }
+    }
+    currentUser = (await fetchMe()) || currentUser;
+    renderAuthBar();
+    setBillingStatus(
+      currentUser?.plan && currentUser.plan !== "free"
+        ? `You're on ${planLabel(currentUser.plan)}. Welcome back.`
+        : "Payment received. Your plan will update in a few seconds — refresh if it still says Free."
+    );
+    history.replaceState(null, "", window.location.pathname + window.location.hash);
+  }
 }
 
 main();

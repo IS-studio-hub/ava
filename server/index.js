@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import { connectDb } from "./db.js";
 import authRouter from "./auth.js";
 import savesRouter from "./saves.js";
+import billingRouter, { billingWebhook } from "./billing.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -14,6 +15,7 @@ const port = Number(process.env.PORT) || 8765;
 
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
+app.post("/api/billing/webhook", express.raw({ type: "application/json" }), billingWebhook);
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 
@@ -23,6 +25,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/saves", savesRouter);
+app.use("/api/billing", billingRouter);
 
 app.use(express.static(root));
 

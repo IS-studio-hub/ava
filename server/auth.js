@@ -20,6 +20,8 @@ function publicUser(doc) {
     id: String(doc._id),
     name: doc.name,
     email: doc.email,
+    plan: doc.plan || "free",
+    planStatus: doc.planStatus || "active",
     createdAt: doc.createdAt,
   };
 }
@@ -148,6 +150,8 @@ router.post("/verify", async (req, res) => {
       name: pending.name,
       email: pending.email,
       passwordHash: pending.passwordHash,
+      plan: "free",
+      planStatus: "active",
       emailVerifiedAt: now,
       createdAt: now,
       updatedAt: now,

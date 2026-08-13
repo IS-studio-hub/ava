@@ -103,10 +103,11 @@
       <div class="home-section__head">
         <p class="home-kicker">Plans</p>
         <h2>Start free. Scale when the work does.</h2>
-        <p class="help">Paid billing is rolling out. You can start on Free today — Pro, Business, and custom tiers unlock as they go live.</p>
+        <p class="help">Subscribe with Stripe. Cancel anytime from Manage billing. Enterprise is custom.</p>
+        <p class="help" id="billingStatus" aria-live="polite"></p>
       </div>
       <div class="home-plans">
-        <article class="home-plan">
+        <article class="home-plan" data-plan-card="free">
           <h3>Free</h3>
           <p class="home-plan__price">$0 <span>/ forever</span></p>
           <p class="home-plan__tag">For trying Ava and personal experiments.</p>
@@ -117,9 +118,9 @@
             <li>Library saves</li>
             <li>Embed + 720p / web video</li>
           </ul>
-          <button type="button" class="btn btn--primary" data-auth="signup">Get started</button>
+          <button type="button" class="btn btn--primary" data-plan="free">Get started</button>
         </article>
-        <article class="home-plan home-plan--featured">
+        <article class="home-plan home-plan--featured" data-plan-card="pro">
           <p class="home-plan__badge">Most used</p>
           <h3>Pro</h3>
           <p class="home-plan__price">$19 <span>/ month</span></p>
@@ -131,9 +132,9 @@
             <li>More library storage</li>
             <li>Commercial use</li>
           </ul>
-          <button type="button" class="btn btn--primary" data-auth="signup">Start Pro</button>
+          <button type="button" class="btn btn--primary" data-plan="pro">Start Pro</button>
         </article>
-        <article class="home-plan">
+        <article class="home-plan" data-plan-card="business">
           <h3>Business</h3>
           <p class="home-plan__price">$49 <span>/ month</span></p>
           <p class="home-plan__tag">For studios and small teams.</p>
@@ -144,9 +145,9 @@
             <li>Invoicing / seat management</li>
             <li>Priority support</li>
           </ul>
-          <button type="button" class="btn btn--ghost" data-auth="signup">Start Business</button>
+          <button type="button" class="btn btn--ghost" data-plan="business">Start Business</button>
         </article>
-        <article class="home-plan">
+        <article class="home-plan" data-plan-card="enterprise">
           <h3>Enterprise</h3>
           <p class="home-plan__price">Custom</p>
           <p class="home-plan__tag">For brands, education, and larger orgs.</p>

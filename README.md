@@ -21,6 +21,9 @@ See `.env.example`:
 - `JWT_SECRET` — session signing secret
 - `APP_URL` — public origin used in verification emails
 - `RESEND_API_KEY` + `MAIL_FROM` — verification email (or SMTP fallback)
+- `STRIPE_SECRET_KEY` + `STRIPE_PUBLISHABLE_KEY` — Stripe billing
+- `STRIPE_WEBHOOK_SECRET` — webhook signing secret
+- `STRIPE_PRICE_PRO` + `STRIPE_PRICE_BUSINESS` — monthly price IDs
 
 Never commit `.env`.
 
@@ -33,6 +36,7 @@ Never commit `.env`.
 | `/library.html` | Saved pieces, embed + video download |
 | `/embed.html?id=` | Public embed (stops if the save is deleted) |
 | `/verify.html?token=` | Email verification |
+| `/api/billing/*` | Stripe checkout, portal, webhook |
 
 ## Deploy
 
