@@ -517,6 +517,13 @@
   <button type="button" class="panel-backdrop" id="panelBackdrop" aria-label="Close controls" tabindex="-1"></button>
   <button type="button" class="panel-toggle" id="btnTogglePanel" aria-expanded="false" aria-controls="panel">Controls</button>
 
+  <div id="saveOverlay" class="save-overlay" hidden tabindex="-1" role="alertdialog" aria-modal="true" aria-labelledby="saveOverlayTitle" aria-busy="true">
+    <div class="save-overlay__card">
+      <div class="save-overlay__spinner" aria-hidden="true"></div>
+      <p id="saveOverlayTitle">Saving recording to library…</p>
+    </div>
+  </div>
+
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

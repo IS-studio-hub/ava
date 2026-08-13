@@ -2,15 +2,53 @@ import { Router } from "express";
 import { GridFSBucket, ObjectId } from "mongodb";
 import multer from "multer";
 import { getDb } from "./db.js";
-import { requireAuth } from "./auth.js";
+import { requireAuth, publicUser } from "./auth.js";
 import { consumeUserUse } from "./usage.js";
+import { ensureUsagePeriod, usageSnapshot } from "./plans.js";
 
 const router = Router();
 const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
 
+function gridFsVideoStorage() {
+  return {
+    _handleFile(req, file, cb) {
+      const bucket = recordingsBucket();
+      const mime = String(file.mimetype || "video/webm");
+      const ext = mime.includes("mp4") ? "mp4" : "webm";
+      const upload = bucket.openUploadStream(`ava-recording.${ext}`, {
+        contentType: mime,
+        metadata: { userId: req.user?.id || "" },
+      });
+      let settled = false;
+      const done = (err, info) => {
+        if (settled) return;
+        settled = true;
+        cb(err || null, info);
+      };
+      file.stream.on("error", (err) => {
+        try { upload.destroy(err); } catch { /* ignore */ }
+        done(err);
+      });
+      file.stream.pipe(upload);
+      upload.on("error", (err) => done(err));
+      upload.on("finish", () => done(null, { videoId: upload.id, filename: upload.filename, size: upload.length }));
+      upload.on("close", () => {
+        if (!settled) done(null, { videoId: upload.id, filename: upload.filename, size: upload.length });
+      });
+    },
+    _removeFile(req, file, cb) {
+      if (!file.videoId) return cb(null);
+      recordingsBucket()
+        .delete(file.videoId)
+        .then(() => cb(null))
+        .catch(() => cb(null));
+    },
+  };
+}
+
 const uploadVideo = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_VIDEO_BYTES },
+  storage: gridFsVideoStorage(),
+  limits: { fileSize: MAX_VIDEO_BYTES, fieldSize: 12 * 1024 * 1024 },
   fileFilter(_req, file, cb) {
     const type = String(file.mimetype || "").toLowerCase();
     const ok =
@@ -23,16 +61,6 @@ const uploadVideo = multer({
 
 function recordingsBucket() {
   return new GridFSBucket(getDb(), { bucketName: "recordings" });
-}
-
-function putRecordingBuffer(buffer, { filename, contentType, metadata }) {
-  const bucket = recordingsBucket();
-  return new Promise((resolve, reject) => {
-    const stream = bucket.openUploadStream(filename, { contentType, metadata });
-    stream.on("error", reject);
-    stream.on("finish", () => resolve(stream.id));
-    stream.end(buffer);
-  });
 }
 
 async function deleteRecordingFile(videoId) {
@@ -180,7 +208,30 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/recording", requireAuth, (req, res, next) => {
+async function assertRecordingUsesLeft(req, res, next) {
+  try {
+    const db = getDb();
+    let doc = await db.collection("users").findOne({ _id: new ObjectId(req.user.id) });
+    if (!doc) return res.status(404).json({ error: "User not found" });
+    doc = await ensureUsagePeriod(db, doc);
+    const snap = usageSnapshot(doc);
+    if (snap.usesRemaining <= 0) {
+      const label = snap.plan === "pro" ? "Pro" : snap.plan === "business" ? "Business" : "Free";
+      const windowText = snap.usesReset === "lifetime" ? "" : " this month";
+      return res.status(402).json({
+        error: `Please increase your plan. You've used all ${snap.useLimit} ${label} saves${windowText}.`,
+        usage: snap,
+        user: publicUser(doc),
+      });
+    }
+    next();
+  } catch (err) {
+    console.error("recording usage check", err);
+    res.status(500).json({ error: "Could not check plan uses" });
+  }
+}
+
+router.post("/recording", requireAuth, assertRecordingUsesLeft, (req, res, next) => {
   uploadVideo.single("video")(req, res, (err) => {
     if (err) {
       const tooBig = err.code === "LIMIT_FILE_SIZE";
@@ -191,9 +242,9 @@ router.post("/recording", requireAuth, (req, res, next) => {
     next();
   });
 }, async (req, res) => {
-  let videoId = null;
+  let videoId = req.file?.videoId || null;
   try {
-    if (!req.file?.buffer?.length) {
+    if (!videoId) {
       return res.status(400).json({ error: "Recording video is required" });
     }
     let params = req.body?.params;
@@ -205,17 +256,13 @@ router.post("/recording", requireAuth, (req, res, next) => {
       }
     }
     if (!params || typeof params !== "object") {
+      await deleteRecordingFile(videoId);
+      videoId = null;
       return res.status(400).json({ error: "params are required" });
     }
 
     const mime = String(req.body?.mime || req.file.mimetype || "video/webm").slice(0, 80);
     const durationMs = Math.max(0, Math.min(120_000, Number(req.body?.durationMs) || 0));
-    const ext = mime.includes("mp4") ? "mp4" : "webm";
-    videoId = await putRecordingBuffer(req.file.buffer, {
-      filename: `ava-recording.${ext}`,
-      contentType: mime,
-      metadata: { userId: req.user.id },
-    });
 
     let usageResult;
     try {

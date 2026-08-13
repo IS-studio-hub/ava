@@ -54,12 +54,12 @@ export async function createRecordingSave(params, blob, {
   mime,
 } = {}) {
   const form = new FormData();
+  const ext = String(mime || blob.type || "").includes("mp4") ? "mp4" : "webm";
+  form.append("video", blob, `recording.${ext}`);
   form.append("params", JSON.stringify(params || {}));
   if (title) form.append("title", title);
   form.append("durationMs", String(durationMs || 0));
   form.append("mime", mime || blob.type || "video/webm");
-  const ext = String(mime || blob.type || "").includes("mp4") ? "mp4" : "webm";
-  form.append("video", blob, `recording.${ext}`);
 
   const headers = { Accept: "application/json" };
   const token = getStoredToken();

@@ -60,8 +60,14 @@ function pickMime(prefer = "any") {
     "video/webm;codecs=vp8",
     "video/webm",
   ];
+  const webmFast = [
+    "video/webm;codecs=vp8",
+    "video/webm",
+    "video/webm;codecs=vp9",
+  ];
   const list =
     prefer === "mp4" ? mp4 :
+    prefer === "webm-vp8" ? webmFast :
     prefer === "webm" ? webm :
     [...mp4, ...webm];
 
@@ -201,7 +207,7 @@ export function startCanvasRecording(canvas, {
 
   const startedAt = performance.now();
   try {
-    recorder.start(250);
+    recorder.start(1000);
   } catch (err) {
     stream.getTracks().forEach((t) => t.stop());
     throw err;
@@ -227,6 +233,11 @@ export function startCanvasRecording(canvas, {
           const blob = new Blob(chunks, { type: mime });
           resolve({ blob, mime, durationMs: Math.max(0, performance.now() - startedAt) });
         };
+        try {
+          recorder.requestData();
+        } catch {
+          /* ignore */
+        }
         recorder.stop();
       });
     },

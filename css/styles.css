@@ -1513,6 +1513,62 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   }
 }
 
+.save-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 5, 5, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.save-overlay[hidden] {
+  display: none !important;
+}
+
+.save-overlay__card {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  padding: 1.4rem 1.6rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg-panel);
+  color: var(--ink);
+  min-width: min(280px, calc(100vw - 2rem));
+  text-align: center;
+}
+
+.save-overlay__card p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.save-overlay__spinner {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  border: 3px solid rgba(242, 236, 217, 0.2);
+  border-top-color: var(--accent);
+  animation: save-spin 0.7s linear infinite;
+}
+
+@keyframes save-spin {
+  to { transform: rotate(360deg); }
+}
+
+body.is-saving {
+  overflow: hidden;
+}
+
+body.is-saving #app,
+body.is-saving .panel-toggle,
+body.is-saving .panel-backdrop {
+  pointer-events: none;
+  user-select: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1523,7 +1579,8 @@ input[type="range"]:focus-visible::-moz-range-thumb {
     scroll-behavior: auto !important;
   }
 
-  .stage__rec::before {
+  .stage__rec::before,
+  .save-overlay__spinner {
     animation: none;
   }
 }

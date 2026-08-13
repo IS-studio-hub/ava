@@ -697,6 +697,20 @@ function bindStudio(engine) {
     $("#btnPause").textContent = paused ? "Play" : "Pause";
   });
 
+  function setSavingOverlay(on, message) {
+    const overlay = $("#saveOverlay");
+    const title = $("#saveOverlayTitle");
+    if (title && message) title.textContent = message;
+    if (overlay) {
+      overlay.hidden = !on;
+      overlay.setAttribute("aria-busy", on ? "true" : "false");
+    }
+    document.body.classList.toggle("is-saving", on);
+    const app = $("#app");
+    if (app) app.inert = on;
+    if (on) overlay?.focus?.();
+  }
+
   async function stopRecordingAndSave() {
     if (!recorderHandle || stoppingRecord) return;
     stoppingRecord = true;
@@ -705,6 +719,7 @@ function bindStudio(engine) {
     const status = $("#saveStatus");
     const btn = $("#btnRecord");
     if (btn) btn.disabled = true;
+    setSavingOverlay(true, "Saving recording to library…");
     if (status) status.textContent = "Saving recording…";
     try {
       const { blob, mime, durationMs } = await recorderHandle.stop();
@@ -714,23 +729,30 @@ function bindStudio(engine) {
       updateRecordUi(0);
 
       if (!blob || blob.size < 800 || durationMs < 800) {
+        setSavingOverlay(false);
         if (status) status.textContent = "Recording was too short. Try again.";
         return;
       }
 
-      const user = await fetchMe();
-      if (!user) {
+      if (!usageUser) {
+        const user = await fetchMe();
+        if (user) renderUsage(user);
+      }
+      if (!usageUser) {
+        setSavingOverlay(false);
         $("#authDialog")?.showModal?.();
         if (status) status.textContent = "Sign in to save the recording.";
         return;
       }
       if (planExhausted()) {
+        setSavingOverlay(false);
         showPlanLimitDialog();
         if (status) status.textContent = "Please increase your plan to save.";
         return;
       }
 
       saveParams(engine.params);
+      setSavingOverlay(true, "Uploading recording to library…");
       const data = await createRecordingSave(engine.params, blob, { durationMs, mime });
       const save = data.save || data;
       if (data.user) renderUsage(data.user);
@@ -739,12 +761,14 @@ function bindStudio(engine) {
       if (help) {
         help.textContent = `“${save.title}” is in your library. Download it as 480p, 720p, 1080p, or 4K MP4 from Video.`;
       }
+      setSavingOverlay(false);
       $("#embedDialog")?.showModal?.();
     } catch (err) {
       recorderHandle = null;
       recording = false;
       lockShapeSource(false);
       updateRecordUi(0);
+      setSavingOverlay(false);
       if (err.data?.user) renderUsage(err.data.user, { prompt: err.status === 402 });
       else if (err.status === 402) showPlanLimitDialog();
       if (status) status.textContent = err.message || "Could not save recording.";
@@ -752,6 +776,7 @@ function bindStudio(engine) {
       stoppingRecord = false;
       if (btn) btn.disabled = false;
       lockSaveButton();
+      if ($("#saveOverlay") && !$("#saveOverlay").hidden) setSavingOverlay(false);
     }
   }
 
@@ -776,9 +801,9 @@ function bindStudio(engine) {
 
     try {
       recorderHandle = startCanvasRecording(engine.canvas, {
-        fps: 30,
-        bitsPerSecond: 8_000_000,
-        preferMime: "webm",
+        fps: 24,
+        bitsPerSecond: 2_500_000,
+        preferMime: "webm-vp8",
       });
     } catch (err) {
       if (status) status.textContent = err.message || "Could not start recording.";
