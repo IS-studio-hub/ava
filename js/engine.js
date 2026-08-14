@@ -197,6 +197,16 @@ export class LetterFieldEngine {
     this.params.inkColor = normalizeHex(this.params.inkColor, DEFAULTS.inkColor);
     this.params.letter = normalizeLetter(this.params.letter, this.params.script);
     this.params.word = normalizeWord(this.params.word, this.params.script);
+    // Keep layout samples finite — undefined jitter used to blank radial/flow/water
+    if (!Number.isFinite(this.params.jitter)) this.params.jitter = 1;
+    if (!Number.isFinite(this.params.spacing) || this.params.spacing <= 0) {
+      this.params.spacing = DEFAULTS.spacing;
+    }
+    if (!Number.isFinite(this.params.density) || this.params.density < 2) {
+      this.params.density = DEFAULTS.density;
+    }
+    const layouts = new Set(["grid", "radial", "flow", "water"]);
+    if (!layouts.has(this.params.layout)) this.params.layout = "grid";
     if (Number.isFinite(this.params.wordMerge)) {
       if (this.params.wordMerge > 0 && this.params.wordMerge <= 1) {
         this.params.wordMerge = Math.round(this.params.wordMerge * 100);
@@ -379,12 +389,11 @@ export class LetterFieldEngine {
    */
   rebuildSamples() {
     const p = this.params;
-    const density = Math.min(1000, Math.max(2, Math.round(p.density)));
-    const spacing = p.spacing;
+    const density = Math.min(1000, Math.max(2, Math.round(Number(p.density) || DEFAULTS.density)));
+    const spacing = Number.isFinite(p.spacing) && p.spacing > 0 ? p.spacing : DEFAULTS.spacing;
     const samples = [];
-    const key = `${p.layout}|${density}|${spacing}|${p.organic}|${p.jitter}`;
+    const key = `${p.layout}|${density}|${spacing}|${Boolean(p.organic)}|${Number.isFinite(p.jitter) ? p.jitter : 1}`;
     if (key === this._sampleKey && this._samples.length) return;
-    this._sampleKey = key;
 
     if (p.layout === "radial") {
       // Concentric spiral rings that fill the letter field
@@ -533,7 +542,9 @@ export class LetterFieldEngine {
       }
     }
 
-    this._samples = samples;
+    // Only lock the cache key after a successful build so a failed pass can retry
+    this._sampleKey = key;
+    this._samples = samples.length ? samples : this._samples;
   }
 
   setPointer(nx, ny, active) {
@@ -866,6 +877,7 @@ export class LetterFieldEngine {
 
       const x = cx + nx * size;
       const y = cy + ny * size;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
 
       let glyphPx = lerp(bgGlyph, shapeGlyph, shapeMix);
       if (layout === "radial") glyphPx *= 0.88 + sm.ringT * 0.22;
