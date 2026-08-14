@@ -83,6 +83,7 @@ const DEFAULTS = {
   autoMorph: false,
   followPointer: false,
   organic: false,
+  jitter: 1,
   theme: "light",
   bgColor: "#ffffff",
   inkColor: "#111111",
@@ -396,8 +397,9 @@ export class LetterFieldEngine {
           let jr = 0;
           let ja = 0;
           if (p.organic) {
-            jr = (hash01(i, r) - 0.5) * 0.008 * p.jitter;
-            ja = (hash01(i + 3, r + 5) - 0.5) * 0.05 * p.jitter;
+            const jit = Number.isFinite(p.jitter) ? p.jitter : 1;
+            jr = (hash01(i, r) - 0.5) * 0.008 * jit;
+            ja = (hash01(i + 3, r + 5) - 0.5) * 0.05 * jit;
           }
           samples.push({
             radius: radius + jr,
@@ -427,8 +429,9 @@ export class LetterFieldEngine {
           nx += Math.cos(ang2) * bend * 0.55;
           ny += Math.sin(ang2) * bend * 0.55;
           if (p.organic) {
-            nx += (hash01(i, j) - 0.5) * 0.012 * p.jitter;
-            ny += (hash01(i + 9, j + 2) - 0.5) * 0.012 * p.jitter;
+            const jit = Number.isFinite(p.jitter) ? p.jitter : 1;
+            nx += (hash01(i, j) - 0.5) * 0.012 * jit;
+            ny += (hash01(i + 9, j + 2) - 0.5) * 0.012 * jit;
           }
           samples.push({
             nx,
@@ -457,8 +460,9 @@ export class LetterFieldEngine {
         let nx = (hash01(attempts * 3, 11) - 0.5) * spacing * 0.98;
         let ny = (hash01(attempts * 5, 17) - 0.5) * spacing * 0.98;
         if (p.organic) {
-          nx += (hash01(attempts, 21) - 0.5) * 0.01 * p.jitter;
-          ny += (hash01(attempts, 29) - 0.5) * 0.01 * p.jitter;
+          const jit = Number.isFinite(p.jitter) ? p.jitter : 1;
+          nx += (hash01(attempts, 21) - 0.5) * 0.01 * jit;
+          ny += (hash01(attempts, 29) - 0.5) * 0.01 * jit;
         }
         let ok = true;
         for (let k = 0; k < placed.length; k++) {
@@ -520,8 +524,9 @@ export class LetterFieldEngine {
           let nx = ((i + 0.5) / cols - 0.5) * spacing;
           let ny = ((j + 0.5) / rows - 0.5) * spacing;
           if (p.organic && p.jitter > 0) {
-            nx += (hash01(i, j) - 0.5) * 0.008 * p.jitter;
-            ny += (hash01(i + 4, j + 7) - 0.5) * 0.008 * p.jitter;
+            const jit = Number.isFinite(p.jitter) ? p.jitter : 1;
+            nx += (hash01(i, j) - 0.5) * 0.008 * jit;
+            ny += (hash01(i + 4, j + 7) - 0.5) * 0.008 * jit;
           }
           samples.push({ nx, ny, i, j, ringT: 0.5, sizeScale: 1, phase: 0 });
         }
@@ -833,8 +838,9 @@ export class LetterFieldEngine {
         angle += ptrAngle * (params.pointerSpinAmount || 1) * 0.65;
       }
 
-      // Soft artboard cull (was too aggressive for radial outer rings)
-      if (Math.abs(nx) > 0.56 || Math.abs(ny) > 0.56) continue;
+      // Soft artboard cull — scale with spacing so zoomed fields still draw
+      const cull = 0.56 * Math.max(1, params.spacing || 1);
+      if (Math.abs(nx) > cull || Math.abs(ny) > cull) continue;
 
       const g = this.letterField.gradient(homeX, homeY);
       const gLen = Math.hypot(g.x, g.y) + 1e-4;
